@@ -11,8 +11,10 @@
 
 Create a Python virtual environment:
 
+#### Khi build, sửa code và muốn cập nhật vào Docker:
+
 ```bash
-python -m venv venv
+docker compose up --build -d
 ```
 
 Activate the virtual environment:
@@ -46,7 +48,7 @@ pip install "fastapi[all]"
 #### Install Sentence Transformers
 
 ```bash
-pip install -U sentence-transformers
+docker compose down
 ```
 
 #### Install All Project Dependencies
@@ -54,7 +56,7 @@ pip install -U sentence-transformers
 Alternatively, install all project dependencies from `requirements.txt`:
 
 ```bash
-pip install -r requirements.txt
+docker-compose exec web alembic revision --autogenerate -m <"description_of_change">
 ```
 
 ### 3. Database Setup

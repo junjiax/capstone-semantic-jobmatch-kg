@@ -14,7 +14,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     full_message = " | ".join(error_messages)
     
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=ResponseSchema(
             data=None,
             message=f"Invalid data: {full_message}",

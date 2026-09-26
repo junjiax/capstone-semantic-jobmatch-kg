@@ -16,7 +16,13 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # Base
 class Base(DeclarativeBase):
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    Id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

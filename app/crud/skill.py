@@ -42,6 +42,10 @@ def create_cv_skill(db: Session, user_id: int, data: dict):
     cv_id = data.get("CVId")
     skill_id = data.get("SkillId")
 
+    cv = db.query(CV).filter(CV.Id == cv_id, CV.UserId == user_id).first()
+    if not cv:
+        return None
+
     db_cv_skill = db.query(CVSkill).filter(
         CVSkill.CVId == cv_id, 
         CVSkill.SkillId == skill_id

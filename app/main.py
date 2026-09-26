@@ -3,12 +3,8 @@ from app.core.config import get_settings
 from app.api.v1.routers import api_router
 from fastapi.middleware.cors import CORSMiddleware
 
-print("DB =", get_settings().POSTGRES_DB)
-
-
 def create_app() -> FastAPI:
     settings = get_settings()
-
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description=(
@@ -29,7 +25,7 @@ app = create_app()
 # ── CORS Middleware ───────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ Thu hẹp lại trong production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

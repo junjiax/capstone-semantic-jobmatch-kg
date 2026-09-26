@@ -25,17 +25,21 @@ def get_application_by_job_and_applicant(
     ).first()
 
 
-# def get_applications_by_applicant(
-#     db: Session,
-#     applicant_id: int,
-# ) -> List[Application]:
-#     """Lấy danh sách đơn ứng tuyển của 1 user."""
-#     return (
-#         db.query(Application)
-#         .filter(Application.ApplicantId == applicant_id)
-#         .order_by(Application.AppliedAt.desc())
-#         .all()
-#     )
+def get_applications_by_applicant(
+    db: Session,
+    applicant_id: int,
+    skip: int = 0,
+    limit: int = 20,
+) -> tuple[List[Application], int]:
+    query = db.query(Application).filter(Application.ApplicantId == applicant_id)
+    total = query.count()
+    applications = (
+        query.order_by(Application.AppliedAt.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return applications, total
 
 
 def get_applications_by_job(

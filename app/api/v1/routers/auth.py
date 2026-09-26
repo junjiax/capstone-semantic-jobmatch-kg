@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -21,6 +20,7 @@ router = APIRouter()
 
 # ─── ĐĂNG KÝ ─────────────────────────────────────────────────
 
+
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -42,6 +42,7 @@ def register(
 
 # ─── ĐĂNG NHẬP ───────────────────────────────────────────────
 
+
 @router.post(
     "/login",
     response_model=TokenResponse,
@@ -58,13 +59,11 @@ async def login(
     body: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    return user_service.login_user(
-        db,
-        email=body.username,
-        password=body.password
-    )
+    return user_service.login_user(db, email=body.username, password=body.password)
+
 
 # ─── ĐĂNG XUẤT ───────────────────────────────────────────────
+
 
 @router.post(
     "/logout",
@@ -85,6 +84,7 @@ async def logout(
 
 # ─── LÀM MỚI TOKEN ───────────────────────────────────────────
 
+
 @router.post(
     "/refresh",
     response_model=TokenResponse,
@@ -99,6 +99,7 @@ async def refresh_token(
 
 
 # ─── QUÊN MẬT KHẨU ───────────────────────────────────────────
+
 
 @router.post(
     "/forgot-password",
@@ -115,10 +116,13 @@ async def forgot_password(
     db: Session = Depends(get_db),
 ):
     user_service.forgot_password(db, body.email)
-    return {"message": "Nếu email này tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi."}
+    return {
+        "message": "Nếu email này tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi."
+    }
 
 
 # ─── ĐẶT LẠI MẬT KHẨU ───────────────────────────────────────
+
 
 @router.post(
     "/reset-password",

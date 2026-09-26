@@ -1,2 +1,8 @@
+// Run app
 uvicorn app.main:app --reload --port 8080
 
+// Remove venv (Power shell)
+Remove-Item -Recurse -Force venv
+
+// Remove venv (Linux shell)
+rmdir /s /q venv

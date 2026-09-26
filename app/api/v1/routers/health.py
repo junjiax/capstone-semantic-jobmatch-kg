@@ -4,4 +4,4 @@ router = APIRouter(tags=["Health"])
 
 @router.get("/")
 def health_check():
-    return {"status": "ok123"}
+    return {"status": "activate", "message": "API is running successfully."}

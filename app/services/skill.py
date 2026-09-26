@@ -49,7 +49,6 @@ def delete_skill_master_service(db: Session, skill_id: int) -> bool:
 
 def add_skill_to_cv(db: Session, user_id: int, skill_in: CVSkillCreate):
     skill_dict = skill_in.model_dump(exclude_unset=True) 
-    print(f"Service đang đẩy dict vào CRUD: {skill_dict}")
 
     return skill_crud.create_cv_skill(
         db=db,

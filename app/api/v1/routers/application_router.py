@@ -105,7 +105,7 @@ def apply_for_job(
 
 @applicant_router.get(
     "/me/applications",
-    response_model=ResponseSchema[Dict[str, Any]],
+    response_model=ResponseSchema[List[ApplicationResponse]],
     summary="Get My Applications",
     description="Xem danh sách các đơn đã nộp của chính người dùng hiện tại."
 )
@@ -113,14 +113,14 @@ def my_applications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    apps = application_service.get_my_applications(
+    apps, _ = application_service.get_my_applications(
         db=db,
         applicant_id=current_user.Id
     )
     return ResponseSchema[List[ApplicationResponse]](
         success=True,
         message="Lấy lịch sử ứng tuyển thành công",
-        data=ApplicationDetailResponse.model_validate(apps)
+        data=[ApplicationResponse.model_validate(app) for app in apps]
     )
 
 

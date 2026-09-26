@@ -84,7 +84,7 @@ def add_skill(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    data = skill_service.add_skill_to_cv(db, current_user, skill)
+    data = skill_service.add_skill_to_cv(db, current_user.Id, skill)
     if not data:
         raise HTTPException(status_code=403, detail="CVId không hợp lệ hoặc quyền truy cập bị từ chối.")
     return ResponseSchema[CVSkillResponse](
@@ -111,7 +111,7 @@ def patch_skill(
         db=db,
         cv_skill_id=cv_skill_id,
         cv_id=cv_id,
-        user=current_user,
+        user_id=current_user.Id,
         update_data=skill
     )
     return ResponseSchema[CVSkillResponse](
@@ -137,7 +137,7 @@ def delete_skill(
         db=db,
         cv_skill_id=cv_skill_id,
         cv_id=cv_id,
-        user=current_user
+        user_id=current_user.Id
     )
     return ResponseSchema(
         success=True,

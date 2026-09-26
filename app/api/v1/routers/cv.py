@@ -96,7 +96,11 @@ async def download_cv(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    file_path = cv_services.get_cv_file_path(db=db, cv_id=cv_id, user_id=current_user.id)
+    file_path = cv_services.get_cv_file_path(
+        db=db,
+        cv_id=cv_id,
+        current_user=current_user,
+    )
     if not file_path:
         raise HTTPException(status_code=404, detail="File not found")
         

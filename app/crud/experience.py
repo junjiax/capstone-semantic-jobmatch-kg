@@ -8,7 +8,7 @@ def create_experience(db: Session, cv_id: int, user_id: int, exp_in: dict):
     if not cv_exists:
         return None
 
-    db_exp = Experience(**exp_in, cv_id=cv_id)
+    db_exp = Experience(**exp_in, CVId=cv_id)
     db.add(db_exp)
     db.commit()
     db.refresh(db_exp)

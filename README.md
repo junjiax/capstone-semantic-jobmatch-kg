@@ -1,85 +1,153 @@
-# FastAPI project
+# Capstone Project
 
-Hệ thống sàng lọc tuyển dụng tự động sử dụng FastAPI và mô hình transformer all-MiniLM-L6-v2 để đánh giá mức độ phù hợp giữa ứng viên và công việc thông qua phân tích tương đồng ngữ nghĩa.
+## Version Information
 
-## Thông tin phiên bản:
+* **Python:** 3.13.3
+* **FastAPI:** 0.115.12
 
-- Python 3.13.3
-- FastAPI 25.3
+## Installation
 
-## Hướng dẫn sử dụng:
+### 1. Create a Virtual Environment
 
-- Chạy:
-
-```bash
-uvicorn app.main:app --reload --port 8080
-```
-
-- Mở:
-  [Swagger API Documentation](http://localhost:8080/docs)
-
-## Cài đặt:
-
-```bash
-pip install fastapi[all]
-```
+Create a Python virtual environment:
 
 ```bash
 python -m venv venv
 ```
 
-- Model:
+Activate the virtual environment:
+
+**Windows (Git Bash):**
+
+```bash
+source venv/Scripts/activate
+```
+
+**Windows (CMD):**
+
+```cmd
+venv\Scripts\activate
+```
+
+**Linux / macOS:**
+
+```bash
+source venv/bin/activate
+```
+
+### 2. Install Dependencies
+
+#### Install FastAPI
+
+```bash
+pip install "fastapi[all]"
+```
+
+#### Install Sentence Transformers
 
 ```bash
 pip install -U sentence-transformers
 ```
 
-download requirements.txt : de cai dat cac thu vien
+#### Install All Project Dependencies
+
+Alternatively, install all project dependencies from `requirements.txt`:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-- Database: Chạy lệnh để tạo db trong PostgreSQL
+### 3. Database Setup
 
-```bash
-create database cv_evaluator_db
+This project uses **PostgreSQL**.
+
+Create the database:
+
+```sql
+CREATE DATABASE cv_evaluator_db;
 ```
 
-- Chạy file test db connection:
+### 4. Test Database Connection
+
+Run the database connection test:
 
 ```bash
 python -m tests.test_db
 ```
 
-- nho import model trong thu muc alembic/env.py
+## Database Migration
 
-```bash
+### 1. Import Models
+
+Make sure all models are imported in:
+
+```text
+alembic/env.py
+```
+
+For example:
+
+```python
 from app.models import resume, job, evaluation
-sua lai import dong nay
 ```
 
-- Tạo migration từ models
+Update the import statement whenever new models are added.
+
+### 2. Create a Migration
+
+Generate a migration based on the current models:
 
 ```bash
-   alembic revision --autogenerate -m "init tables"
+alembic revision --autogenerate -m "init tables"
 ```
 
-- Apply migration (tạo bảng)
+### 3. Apply Migration
+
+Apply the migration and create or update database tables:
 
 ```bash
 alembic upgrade head
 ```
 
-- Check DB
+### 4. Check Current Migration
+
+Check the current database migration version:
 
 ```bash
 alembic current
 ```
 
-- cac buoc sua model khong can sua tren database
+### 5. Update the Database After Modifying Models
+
+Whenever you modify an existing model or add a new model, generate a new migration:
 
 ```bash
-alembic revision --autogenerate -m "abc...."
+alembic revision --autogenerate -m "describe your changes"
+```
+
+Then apply the migration:
+
+```bash
 alembic upgrade head
 ```
+
+> **Note:** After modifying models, you do not need to manually modify the database schema. Generate and apply an Alembic migration instead.
+
+## Run the Application
+
+Start the FastAPI development server:
+
+```bash
+uvicorn app.main:app --reload --port 8080
+```
+
+The application will be available at:
+
+* **API:** http://localhost:8080
+* **Swagger UI:** http://localhost:8080/docs
+
+## Swagger API Documentation
+
+Open Swagger UI:
+
+**http://localhost:8080/docs**

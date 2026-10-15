@@ -287,3 +287,10 @@ def batch_match_cv_with_jobs(
             pass
 
     return result
+
+def get_text_embedding(text: str) -> List[float]:
+    try:
+        return _embedding(text)
+    except Exception as e:
+        logger.error(f"Error generating embedding for text: {e}")
+        return []

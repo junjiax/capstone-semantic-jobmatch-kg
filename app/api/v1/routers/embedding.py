@@ -18,7 +18,7 @@ router = APIRouter()
     summary="Get Model Information And Status",
     description="Get model information such as loaded status and device",
 )
-async def model_info():
+async def get_model_info():
     return ResponseSchema(
         success=True,
         message="Model information retrieved successfully",
@@ -27,7 +27,23 @@ async def model_info():
             "device": "cuda" if model_loaded() else "cpu",
         },
     )
-
+@router.post(
+    "/embeddings",
+    summary="Get Text Embedding",
+    description="Generate an embedding for the provided text",
+)
+async def get_text_embedded(sample_text: str):
+    return ResponseSchema(
+        success=True,
+        message="Embedding service is running",
+        data={
+            "list_float_embedding": get_text_embedding(sample_text),
+        },
+        meta={
+            "model_loaded": model_loaded(),
+            "device": "cuda" if model_loaded() else "cpu",
+        },
+    )
 
 @router.post(
     "/execute",

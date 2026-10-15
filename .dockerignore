@@ -1,15 +1,20 @@
 .git
+.env
+.env.*
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
 node_modules/
 venv/
 .venv/
+.vscode/
 
 data/
 datasets/
+uploads/
 *.zip
 *.tar
 *.tar.gz

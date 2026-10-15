@@ -1,22 +1,22 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field
 from functools import lru_cache
+from sqlalchemy.engine import URL
 
-class Settings(BaseSettings):    
+
+class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8",
-        case_sensitive=True
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True
     )
 
     POSTGRES_USER: str
-    POSTGRES_PASSWORD: str = ""
+    POSTGRES_PASSWORD: str
     POSTGRES_SERVER: str
-    POSTGRES_PORT: int = 5432
+    POSTGRES_PORT: int
     POSTGRES_DB: str
 
     # --- Security ---
-    SECRET_KEY: str = "" 
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -25,22 +25,27 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
 
     # --- General ---
-    PROJECT_NAME: str
+    PROJECT_NAME: str = "CV Evaluation API"
     ENVIRONMENT: str = "development"
-    MODEL_NAME: str = "all-MiniLM-L6-v2" 
+    MODEL_NAME: str = "all-MiniLM-L6-v2"
 
+    # app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://username:password@localhost:5432/mydatabase'
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        return (
-            f"postgresql+psycopg2://{self.POSTGRES_USER}:"
-            f"{self.POSTGRES_PASSWORD}@"
-            f"{self.POSTGRES_SERVER}:"
-            f"{self.POSTGRES_PORT}/"
-            f"{self.POSTGRES_DB}"
-            )
+        return URL.create(
+            drivername="postgresql+psycopg2",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB,
+        ).render_as_string(hide_password=False)
+
+
 @lru_cache
 def get_settings():
     return Settings()
+
 
 settings = Settings()

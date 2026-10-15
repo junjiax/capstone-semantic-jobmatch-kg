@@ -7,11 +7,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description=(
-            "An automated recruitment screening platform leveraging FastAPI "
-            "and the all-MiniLM-L6-v2 transformer model to evaluate candidate–job "
-            "fit through semantic similarity analysis."
-        ),
+        description=("API for CV evaluation and processing."),
         version="1.0.0",
     )
     app.include_router(router=api_router, prefix="/api/v1")

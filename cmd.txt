@@ -1,8 +1,18 @@
 // Run app
-uvicorn app.main:app --reload --port 8080
+// Redirect to work dir
+cd fastapi
 
-// Remove venv (Power shell)
-Remove-Item -Recurse -Force venv
+// Window
+venv\Scripts\activate
 
-// Remove venv (Linux shell)
-rmdir /s /q venv
+// Linux 
+source venv/Scripts/activate
+
+// Chỉ định tên file cấu hình khác:
+docker compose -f file-name.yml up -d
+
+// Build lại toàn bộ image trước khi khởi động (nếu bạn đã sửa mã nguồn hoặc Dockerfile):
+docker compose up --build -d
+
+// Dừng và xóa toàn bộ các container đã tạo bởi file compose:
+docker compose down

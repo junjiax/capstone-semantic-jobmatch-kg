@@ -1,7 +1,6 @@
 from sentence_transformers import util, SentenceTransformer
 import torch
-import numpy as np
-from typing import List, Union, Optional
+from typing import List, Optional
 import logging
 import threading
 

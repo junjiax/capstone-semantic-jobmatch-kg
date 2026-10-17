@@ -1,0 +1,325 @@
+[33mcommit 6c14d06a0ee31eb20c803acda9b3359ff2e4462c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Thu Oct 15 23:17:12 2026 +0700
+
+    updated docker-compose.yml
+
+[33mcommit 94132047b3040acd1194c0bc4173b2c30bd5addf[m
+Merge: c564049 edf7ba8
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Sep 26 14:39:11 2026 +0700
+
+    updated folder /app/api/v1/routers
+
+[33mcommit c56404994b9679cca645b422c7e33d7f9ea9494e[m
+Merge: 9c42432 43afc63
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Sep 26 14:35:39 2026 +0700
+
+    merged conflict from ltgiai
+
+[33mcommit 9c42432de08b1e15e122d5b8e1898f633a2cb199[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Sep 26 14:33:20 2026 +0700
+
+    fix env gemini api key
+
+[33mcommit edf7ba8af9cb72e84fd5f6c74c2d7250a90bdd81[m
+Author: Giai T. Luong <tuangiai52@gmail.com>
+Date:   Sat Sep 26 13:48:19 2026 +0700
+
+    Revise README for project title and setup instructions
+    
+    Updated project title and version information. Revised installation instructions and added details for database setup and migration.
+
+[33mcommit 43afc63e0661d9668e3b4cd62df83068da3bd3fa[m[33m ([m[1;32mltgiai[m[33m)[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Sep 26 13:23:34 2026 +0700
+
+    first init
+
+[33mcommit 453ae2ad9b0df778fd522629b670b552c631012a[m[33m ([m[1;31morigin/ltgiai[m[33m)[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Fri Apr 10 22:06:28 2026 +0700
+
+    ready for zip
+
+[33mcommit 1605090be63e6e922f0a9608bed34c9a1f95f005[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Mon Apr 6 14:31:52 2026 +0700
+
+    modify services/embedding.py, api/app/v1/routers/embedding.py router.py
+
+[33mcommit e1337f034a108580ca6e4708e89fa2a8de113676[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Apr 4 14:41:56 2026 +0700
+
+    modify /uploads, /services
+
+[33mcommit f7fed47ed8abf5685390c40520e005ab553f9798[m
+Merge: 5a445df efaaf0a
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Thu Apr 2 16:11:57 2026 +0700
+
+    merge main
+
+[33mcommit 5a445dfd4fd24b95284d74214db3bc805f2ff977[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Thu Apr 2 16:10:02 2026 +0700
+
+    delete app/crud/demo.py
+
+[33mcommit efaaf0a5cc3b896fb8b4625ea13f0bd34e437e75[m
+Merge: 9f8017c d0a98e8
+Author: Nguyễn Vũ Hào <164126733+nvhao100604@users.noreply.github.com>
+Date:   Thu Apr 2 11:40:23 2026 +0700
+
+    Merge pull request #14 from nvhao100604/feature/merge
+    
+    optimize client import
+
+[33mcommit d0a98e88f782a5a8c97f376eb514d52db6dbbe90[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Thu Apr 2 11:39:50 2026 +0700
+
+    optimize client import
+
+[33mcommit 9f8017c91ddb7b0f5c0e5c305c5ae8550c21f756[m
+Merge: 28cb50e 8316d39
+Author: uynnhii04 <150148698+uynnhii04@users.noreply.github.com>
+Date:   Tue Mar 31 01:07:17 2026 +0700
+
+    update application tracking & job
+    
+    merge unhi to main
+
+[33mcommit 8316d39b02f28b64ac38d5b9b179af7eb3af0f80[m[33m ([m[1;31morigin/unhi[m[33m)[m
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Tue Mar 31 01:02:53 2026 +0700
+
+    done application tracking
+
+[33mcommit 175877ecf3a501302ee2057a93bb512fd1825832[m
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Mon Mar 30 00:26:26 2026 +0700
+
+    da update xong module job
+
+[33mcommit 28cb50e8d77591dfba4a589c955e0f3787c3f925[m
+Merge: e3a7a73 968477c
+Author: Nguyễn Vũ Hào <164126733+nvhao100604@users.noreply.github.com>
+Date:   Tue Mar 24 21:34:24 2026 +0700
+
+    Merge pull request #12 from nvhao100604/feature/merge
+    
+    Feature/merge
+
+[33mcommit 968477cd8e93d4f2c283e7de63ee4388c6ac5d53[m
+Merge: 13c7e66 927f0fb
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Tue Mar 24 21:33:27 2026 +0700
+
+    merged
+
+[33mcommit 927f0fb8b8dde1901dee74dc56ed0c8e0298a766[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Tue Mar 24 21:07:26 2026 +0700
+
+    add calculate cosine similarity to assess cv matching to services/embedding, add crud jobskills + crud/cvskills + crud/match result, modify routers/embedding
+
+[33mcommit 13c7e6687c581f0a205b0f9301cfb078956f974f[m
+Merge: c25bb85 e3a7a73
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 21:54:24 2026 +0700
+
+    Merge branch 'main' of https://github.com/nvhao100604/fast_api into feature/merge
+
+[33mcommit e3a7a73e85ebcc984ddc0547fbb0d33941660bff[m
+Merge: ee6120f 4dc9fa8
+Author: Nguyễn Vũ Hào <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 21:53:24 2026 +0700
+
+    Merge pull request #11 from nvhao100604/feature/merge
+    
+    Feature/merge
+
+[33mcommit c25bb85c3508bca7590ec46f7529ee5e45a94127[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 21:52:12 2026 +0700
+
+    merged
+
+[33mcommit 4dc9fa82f4cbf817ec8a06bfbe7fe9ad6d56d2ee[m
+Merge: 39b2f3a f67fabf
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 21:03:07 2026 +0700
+
+    merge xong
+
+[33mcommit 39b2f3a5b69489355e7572aea04236846cc374ea[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 18:02:20 2026 +0700
+
+    pull G
+
+[33mcommit 003a7b993e9bf1eb215584298c0534fd47356fc5[m
+Merge: ee6120f 5026c6c
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 10:49:37 2026 +0700
+
+    Merge branch 'unhi' of https://github.com/nvhao100604/fast_api into feature/merge
+
+[33mcommit ee6120ff2fde7a423c6cf94a0ca1f8ff6afed1d9[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Mon Mar 23 10:44:45 2026 +0700
+
+    pull
+
+[33mcommit 5026c6cc0779ea537481171343cfe36de28d99a8[m
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Mon Mar 23 10:39:33 2026 +0700
+
+    job
+
+[33mcommit f67fabfbb9457ab85f4738403205aa5f938f6652[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Mon Mar 23 10:25:05 2026 +0700
+
+    generate cvembedding + store embedding vector to database + remove column embedding type from table cvembedding, jobembedding
+
+[33mcommit 8deda946015272793c8496200d05ac353b2a031c[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sun Mar 22 13:02:29 2026 +0700
+
+    test function cv words retrieving and parse into cv table successfully
+
+[33mcommit 80d86b58950df44b6c85a35b8ba6796d391ccf44[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sun Mar 22 11:30:43 2026 +0700
+
+    pull and config database, login successfully
+
+[33mcommit e55c60b0955025b1622698106a311a4630cc8144[m
+Merge: 4de5112 e94c470
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Sat Mar 21 21:46:46 2026 +0700
+
+    Merge branch 'main' of into unhi
+
+[33mcommit 4de51128ab5554ce7fc6e97f7d6f28959ba5e2a6[m
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Sat Mar 21 21:43:30 2026 +0700
+
+    update load data job
+
+[33mcommit d14a5887cdb5dc22a447cbf759c5269b1f028200[m
+Merge: 5d039b5 e94c470
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Mar 21 20:41:55 2026 +0700
+
+    Merge branch 'main' of https://github.com/nvhao100604/fast_api into ltgiai
+
+[33mcommit 5d039b51d1a5a4e62dc97d13d83940522e11832a[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Sat Mar 21 20:40:12 2026 +0700
+
+    modified app/api/v1/routers/router.py
+
+[33mcommit e94c470a2555e0a52ff7de9551c7da0af46a71b2[m
+Merge: e877ee8 04f1c91
+Author: Nguyễn Vũ Hào <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 20 21:56:37 2026 +0700
+
+    Merge pull request #10 from nvhao100604/feature/parsing
+    
+    Feature/parsing
+
+[33mcommit 04f1c9150ebf9aecdd638830de0cba4e5f5aca07[m[33m ([m[1;31morigin/feature/parsing[m[33m)[m
+Merge: 4ba138c 71ccfde
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 20 21:54:48 2026 +0700
+
+    Merge branch 'main' into feature/parsing
+
+[33mcommit 4ba138cfbee210ae971bd9f847fdd5e69df162e0[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 20 21:52:25 2026 +0700
+
+    pull main
+
+[33mcommit 4cc904d35f01d6e9d4a17238ebda4127080619f6[m
+Merge: 1ac4baa e877ee8
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Tue Mar 17 22:17:57 2026 +0700
+
+    Merge branch 'main' of https://github.com/nvhao100604/fast_api into ltgiai
+
+[33mcommit 1ac4baae1f7cb8417cf57ad923b262cf285e3f7f[m
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Tue Mar 17 22:16:30 2026 +0700
+
+    added crud embedding
+
+[33mcommit 6a1077ac258aeb8f793780b39ca21a05d2741cf4[m
+Merge: 4312e7e e877ee8
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Sun Mar 15 22:03:53 2026 +0700
+
+    update application tracking
+
+[33mcommit 4312e7e82acdd65da5419a3b0cf16fb2d95261bc[m
+Author: uynnhii04 <uyennhi04ht@gmail.com>
+Date:   Sat Mar 14 14:37:15 2026 +0700
+
+    udpate
+
+[33mcommit 71ccfde7762620750b2c06a12c05b0aed8a52af0[m
+Merge: 9a2825a e877ee8
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Sun Mar 8 11:18:27 2026 +0700
+
+    Merge branch 'main' of https://github.com/nvhao100604/fast_api
+
+[33mcommit 9a2825a13f49e7632ba90908db0d1f088d595768[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Sun Mar 8 11:18:14 2026 +0700
+
+    pull
+
+[33mcommit e877ee8226844e59538e6aaab62f9faed80d9d2a[m
+Merge: 5f1be37 2b3d059
+Author: vu <nguyenhoa.070781@gmail.com>
+Date:   Sat Mar 7 13:13:46 2026 +0700
+
+    cv, Experience , Education
+
+[33mcommit 5f1be370a2f513518fb7b890a18cad313793a80b[m
+Author: vu <nguyenhoa.070781@gmail.com>
+Date:   Sat Mar 7 08:51:22 2026 +0700
+
+    user
+
+[33mcommit 2b3d05986d5698c795490eb0e078d006f8883a17[m[33m ([m[1;31morigin/feature/applicant-mgmt[m[33m)[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 6 22:24:18 2026 +0700
+
+    add ultimate endpoint to upload cv (incomplete)
+
+[33mcommit e5d1a4bd7a5d8905ee78c54e8394c4c8efda6a8a[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 6 22:12:51 2026 +0700
+
+    endpoints, services, crud for applicant, exp, edu, skill, cv_skill, cv
+
+[33mcommit ed47efffdc3d96761706fba7a4294efbba33753f[m[33m ([m[1;31morigin/feature-cv-mgmt[m[33m)[m
+Author: nvhao100604 <164126733+nvhao100604@users.noreply.github.com>
+Date:   Fri Mar 6 18:37:29 2026 +0700
+
+    add 4 endpoints, services, crud for cv management
+
+[33mcommit a4542648c2c89ccdaaafb66843c487dd6f919419[m
+Merge: 751b367 a591aea
+Author: junjiax <tuangiai52@gmail.com>
+Date:   Fri Mar 6 15:40:18 2026 +0700
+
+    Merge branch 'unhi' of https://github.com/nvhao100604/fast_api into ltgiai

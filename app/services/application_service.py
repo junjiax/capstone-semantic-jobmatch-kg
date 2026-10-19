@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 
-from app.models import User, UserRole
+from app.models import User
 from app.models.application import Application, ApplicationHistory, ApplicationStatus
 from app.models.job import JobStatus
 from app.crud import application_crud
@@ -139,12 +139,12 @@ def get_application_detail_with_auth(db: Session, application_id: int, current_u
 
         # 3. Kiểm tra quyền sở hữu (403 Forbidden)
         # Nếu là Applicant, Id của họ phải khớp với ApplicantId trong đơn
-        if current_user.role == UserRole.APPLICANT:
-            if application.ApplicantId != current_user.Id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Bạn không có quyền xem đơn ứng tuyển này."
-                )
+        # if current_user.role == UserRole.APPLICANT:
+        #     if application.ApplicantId != current_user.Id:
+        #         raise HTTPException(
+        #             status_code=status.HTTP_403_FORBIDDEN,
+        #             detail="Bạn không có quyền xem đơn ứng tuyển này."
+        #         )
 
         # 4. Nếu vượt qua tất cả, trả về dữ liệu
         return application

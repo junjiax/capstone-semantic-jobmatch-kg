@@ -1,59 +1,59 @@
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Optional
+from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Column, DateTime, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum as SQLEnum, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Enum as SQLEnum
 
 from app.core.database import Base
-from app.models.enum import UserRole, UserStatus
+from app.models.enum import UserRole
 
 if TYPE_CHECKING:
-    from app.models.screen_batch import ScreeningBatch
+    from app.models.profile import Profile
+
+
+def _user_role_values(role_enum: type[UserRole]) -> list[str]:
+    return [
+        role.value
+        for name, role in role_enum.__members__.items()
+        if name == role.name
+    ]
+
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "USER"
 
-    # ── Thông tin định danh ──────────────────────────────
-    email     = Column(String(255), unique=True, index=True, nullable=False)
-    full_name = Column(String(255), nullable=False)
-    phone     = Column(String(20),  nullable=True)
-
-    # ── Xác thực ─────────────────────────────────────────
-    hashed_password = Column(String(255), nullable=False)
-
-    # ── Phân quyền & trạng thái ──────────────────────────
-    role: Mapped[UserRole] = mapped_column(
+    Email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    FullName: Mapped[str] = mapped_column(String(255))
+    Phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    HashedPassword: Mapped[str] = mapped_column(String(255))
+    Role: Mapped[UserRole] = mapped_column(
         SQLEnum(
             UserRole,
-            values_callable=lambda obj: [e.value for e in obj]
+            name="userrole",
+            values_callable=_user_role_values,
         ),
-        default=UserRole.APPLICANT,
-    )    
-    is_active   = Column(Boolean, default=True,  nullable=False)
-    is_verified = Column(Boolean, default=False, nullable=False)
-
-    # ── Reset mật khẩu (lưu tạm, xóa sau khi dùng) ──────
-    reset_token         = Column(String(512), nullable=True)
-    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
-
-    # ── Timestamps ───────────────────────────────────────
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=UserRole.CANDIDATE,
         nullable=False,
     )
-    updated_at = Column(
+    IsActive: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    IsVerified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ResetToken: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    ResetTokenExpires: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    CreatedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    UpdatedAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
-    cvs = relationship("CV", back_populates="user")
-    batches: Mapped[list["ScreeningBatch"]] = relationship(
-    back_populates="user"
+
+    profiles: Mapped[list["Profile"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
-    applications = relationship("Application", back_populates="applicant", foreign_keys="Application.ApplicantId")
 
     def __repr__(self) -> str:
-        return f"<User id={self.id} email={self.email!r} role={self.role}>"
+        return f"<User id={self.Id} email={self.Email!r} role={self.Role}>"

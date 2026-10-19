@@ -12,7 +12,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
 ai_model = "gemini-2.5-flash"
 
 def generate_unique_filename(user_id: int, original_filename: str) -> str:

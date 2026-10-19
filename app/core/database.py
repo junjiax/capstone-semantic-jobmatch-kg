@@ -25,4 +25,4 @@ def get_db():
 
 # Base
 class Base(DeclarativeBase):
-    Id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    Id: Mapped[int] = mapped_column("id", primary_key=True, autoincrement=True)

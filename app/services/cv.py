@@ -3,7 +3,6 @@ from os import path
 from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.orm import Session
 import os
-import json
 
 from app.api.v1.schemas.cv import CVFilter
 from app.api.v1.schemas.education import EducationCreate

@@ -18,17 +18,15 @@ api_router = APIRouter()
 
 # Public routes (accessible to all users)
 api_router.include_router(health.router, prefix="/health", tags=["Health"])
-api_router.include_router(embedding.router, prefix="/embedding_model", tags=["Embedding Model"])
-api_router.include_router(users.router, prefix="/users", tags=["Users"])
-api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+# api_router.include_router(embedding.router, prefix="/embedding_model", tags=["Embedding Model"])
+# api_router.include_router(users.router, prefix="/users", tags=["Users"])
+# api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
-public_router = APIRouter()
-public_router.include_router(cv.public_router, prefix="/cvs", tags=["CV"])
+# public_router = APIRouter()
+# public_router.include_router(cv.public_router, prefix="/cvs", tags=["CV"])
 
-api_router.include_router(public_router)
-# api_router.include_router(private_router)
-
-
+# api_router.include_router(public_router)
+# # api_router.include_router(private_router)
 
 # public_router.include_router(job.public_router, prefix="/jobs", tags=["Jobs"])
 # public_router.include_router(cv.public_router, prefix="/cvs", tags=["CV"])
@@ -40,7 +38,7 @@ api_router.include_router(public_router)
 # public_router.include_router(application.router, prefix="/applications", tags=["Applications Tracking"])
 # public_router.include_router(job.private_router, prefix="/jobs", tags=["Jobs"])
 
-# Private routes (accessible only to authenticated users)
+# # Private routes (accessible only to authenticated users)
 # private_router = APIRouter()
 # private_router.include_router(cv.private_router, prefix="/cvs", tags=["CV"])
 # private_router.include_router(embedding.router, prefix="/calculate_similarity", tags=["Calculate Similarity"])

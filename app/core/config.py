@@ -6,12 +6,16 @@ from sqlalchemy.engine import URL
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=True
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
     )
 
+    # --- Database ---
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
-    POSTGRES_SERVER: str
+    POSTGRES_SERVER_DOCKER: str
     POSTGRES_PORT: int
     POSTGRES_DB: str
 
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
             drivername="postgresql+psycopg2",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
+            host=self.POSTGRES_SERVER_DOCKER,
             port=self.POSTGRES_PORT,
             database=self.POSTGRES_DB,
         ).render_as_string(hide_password=False)
@@ -48,4 +52,4 @@ def get_settings():
     return Settings()
 
 
-settings = Settings()
+settings = get_settings()

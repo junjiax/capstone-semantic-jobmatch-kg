@@ -1,14 +1,13 @@
 import enum
 
-class UserStatus(enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    PENDING = "pending"
-
 class CVFileType(enum.Enum):
     PDF = "pdf"
     DOCX = "docx"
     TXT = "txt"
+
+class ProfileFileType(str, enum.Enum):
+    PDF = "pdf"
+    OTHER = "other"
 
 class JobStatus(enum.Enum):
     DRAFT = "draft"
@@ -29,9 +28,10 @@ class BatchStatus(enum.Enum):
     FAILED = "failed"
 
 class UserRole(str , enum.Enum):
-    HR = "hr"
-    APPLICANT = "applicant"
-    ADMIN     = "admin"
+    CANDIDATE = "candidate"
+    ADMIN = "admin"
+    APPLICANT = "candidate"
+    HR = "admin"
 
 class UserStatus(str, enum.Enum):
     ACTIVE   = "active"

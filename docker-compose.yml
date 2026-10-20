@@ -46,28 +46,45 @@ services:
       - ./uploads:/app/uploads
       - model_cache:/home/app/.cache/huggingface
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_SERVER_DOCKER: ${POSTGRES_SERVER_DOCKER}
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      DATABASE_URL_DOCKER: ${DATABASE_URL_DOCKER}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_SERVER_DOCKER: ${POSTGRES_SERVER_DOCKER:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-cv_evaluator_db}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password123}
     depends_on:
       postgres:
         condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: neo4j_db
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/password123}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1G
+    volumes:
+      - neo4j_data:/data
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/docs', timeout=3)"
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:
   pgadmin_data:
   model_cache:
+  neo4j_data:

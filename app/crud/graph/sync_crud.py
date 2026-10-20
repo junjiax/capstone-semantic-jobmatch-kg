@@ -110,6 +110,165 @@ def upsert_job_position_node(
     return res[0] if res else {}
 
 
+def upsert_domain_node(name: str, description: Optional[str] = None) -> Dict[str, Any]:
+    """Tạo hoặc cập nhật node Domain (Lĩnh vực CNTT như Backend, Frontend, AI/ML, DevOps...)."""
+    if not name or not name.strip():
+        return {}
+    normalized = name.strip().lower()
+    query = """
+    MERGE (d:Domain {name: $name})
+    ON CREATE SET 
+        d.normalizedName = $normalizedName,
+        d.description = $description,
+        d.createdAt = datetime()
+    ON MATCH SET
+        d.description = coalesce($description, d.description),
+        d.updatedAt = datetime()
+    RETURN d.name AS name
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "name": name.strip(),
+        "normalizedName": normalized,
+        "description": description or ""
+    })
+    return res[0] if res else {}
+
+
+def upsert_expertise_node(name: str, domain_name: Optional[str] = None) -> Dict[str, Any]:
+    """Tạo hoặc cập nhật node Expertise (Chuyên môn sâu)."""
+    if not name or not name.strip():
+        return {}
+    normalized = name.strip().lower()
+    query = """
+    MERGE (e:Expertise {name: $name})
+    ON CREATE SET 
+        e.normalizedName = $normalizedName,
+        e.createdAt = datetime()
+    ON MATCH SET 
+        e.updatedAt = datetime()
+    WITH e
+    FOREACH (_ IN CASE WHEN $domainName IS NOT NULL AND $domainName <> '' THEN [1] ELSE [] END |
+        MERGE (d:Domain {name: $domainName})
+        MERGE (e)-[:UNDER_DOMAIN]->(d)
+    )
+    RETURN e.name AS name
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "name": name.strip(),
+        "normalizedName": normalized,
+        "domainName": domain_name.strip() if domain_name else None
+    })
+    return res[0] if res else {}
+
+
+def upsert_jd_node(
+    jd_id: int,
+    title: str,
+    domain: Optional[str] = None,
+    expertise: Optional[str] = None,
+    qualification: Optional[str] = None,
+    responsibility: Optional[str] = None,
+    experience_years: Optional[int] = None,
+    raw_text: Optional[str] = None,
+    clean_text: Optional[str] = None,
+    embedding: Optional[List[float]] = None,
+    vector_title: Optional[List[float]] = None,
+    vector_domain: Optional[List[float]] = None,
+    vector_expertise: Optional[List[float]] = None,
+    vector_qualification: Optional[List[float]] = None,
+    vector_responsibility: Optional[List[float]] = None,
+) -> Dict[str, Any]:
+    """
+    Tạo hoặc cập nhật node JD (Job Description) và kết nối với Domain, Expertise, JobPosition.
+    """
+    query = """
+    MERGE (j:JD {jdId: $jdId})
+    ON CREATE SET
+        j.title = $title,
+        j.domain = $domain,
+        j.expertise = $expertise,
+        j.qualification = $qualification,
+        j.responsibility = $responsibility,
+        j.experienceYears = $experienceYears,
+        j.rawText = $rawText,
+        j.cleanText = $cleanText,
+        j.createdAt = datetime()
+    ON MATCH SET
+        j.title = $title,
+        j.domain = $domain,
+        j.expertise = $expertise,
+        j.qualification = $qualification,
+        j.responsibility = $responsibility,
+        j.experienceYears = $experienceYears,
+        j.rawText = $rawText,
+        j.cleanText = $cleanText,
+        j.updatedAt = datetime()
+    WITH j
+    // Gán embedding vector nếu có
+    FOREACH (_ IN CASE WHEN $embedding IS NOT NULL THEN [1] ELSE [] END |
+        SET j.embedding = $embedding
+    )
+    FOREACH (_ IN CASE WHEN $vectorDomain IS NOT NULL THEN [1] ELSE [] END |
+        SET j.vectorDomain = $vectorDomain
+    )
+    FOREACH (_ IN CASE WHEN $vectorExpertise IS NOT NULL THEN [1] ELSE [] END |
+        SET j.vectorExpertise = $vectorExpertise
+    )
+    FOREACH (_ IN CASE WHEN $vectorTitle IS NOT NULL THEN [1] ELSE [] END |
+        SET j.vectorTitle = $vectorTitle
+    )
+    FOREACH (_ IN CASE WHEN $vectorQualification IS NOT NULL THEN [1] ELSE [] END |
+        SET j.vectorQualification = $vectorQualification
+    )
+    FOREACH (_ IN CASE WHEN $vectorResponsibility IS NOT NULL THEN [1] ELSE [] END |
+        SET j.vectorResponsibility = $vectorResponsibility
+    )
+
+    // Liên kết với JobPosition (đảm bảo tính tương thích hai chiều)
+    MERGE (jp:JobPosition {jobId: $jdId})
+    ON CREATE SET jp.title = $title, jp.status = 'OPEN', jp.createdAt = datetime()
+    MERGE (jp)-[:DEFINED_IN_JD]->(j)
+    MERGE (j)-[:FOR_POSITION]->(jp)
+
+    // Liên kết với Domain
+    WITH j
+    FOREACH (_ IN CASE WHEN $domain IS NOT NULL AND $domain <> '' THEN [1] ELSE [] END |
+        MERGE (d:Domain {name: $domain})
+        MERGE (j)-[:BELONGS_TO_DOMAIN]->(d)
+    )
+
+    // Liên kết với Expertise
+    WITH j
+    FOREACH (_ IN CASE WHEN $expertise IS NOT NULL AND $expertise <> '' THEN [1] ELSE [] END |
+        MERGE (e:Expertise {name: $expertise})
+        MERGE (j)-[:REQUIRES_EXPERTISE]->(e)
+    )
+
+    RETURN j.jdId AS jdId
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "jdId": jd_id,
+        "title": title.strip(),
+        "domain": domain.strip() if domain else None,
+        "expertise": expertise.strip() if expertise else None,
+        "qualification": qualification.strip() if qualification else None,
+        "responsibility": responsibility.strip() if responsibility else None,
+        "experienceYears": int(experience_years) if experience_years is not None else 0,
+        "rawText": raw_text or "",
+        "cleanText": clean_text or "",
+        "embedding": embedding,
+        "vectorTitle": vector_title,
+        "vectorDomain": vector_domain,
+        "vectorExpertise": vector_expertise,
+        "vectorQualification": vector_qualification,
+        "vectorResponsibility": vector_responsibility,
+    })
+    return res[0] if res else {}
+
+
 def upsert_cv_node(
     cv_id: int,
     user_id: int,
@@ -191,43 +350,89 @@ def sync_cv_skills_graph(cv_id: int, skills: List[Dict[str, Any]]) -> int:
     return res[0]["syncedCount"] if res else 0
 
 
-def sync_job_skills_graph(job_id: int, skills: List[Dict[str, Any]]) -> int:
+def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -> int:
     """
-    Đồng bộ danh sách kỹ năng yêu cầu của JobPosition lên Neo4j theo lô (UNWIND).
+    Đồng bộ danh sách yêu cầu kỹ năng của JD lên Neo4j:
+    - Tạo các node (:SkillRequirement) gắn với (:JD) qua [:REQUIRES]
+    - Ánh xạ (:SkillRequirement) sang (:Skill) qua [:REFERS_TO_SKILL]
+    - Đồng thời duy trì [:REQUIRES_SKILL] trực tiếp từ (:JD) và (:JobPosition) tới (:Skill) để tương thích ngược.
     """
     clean_skills = []
-    for item in skills:
-        s_name = item.get("skillName") or item.get("name")
+    for idx, item in enumerate(skills):
+        s_name = item.get("skillName") or item.get("title") or item.get("name")
         if not s_name:
             continue
+        req_id = item.get("requirementId") or item.get("id") or int(f"{jd_id}{idx:03d}")
         clean_skills.append({
+            "requirementId": req_id,
             "skillId": item.get("skillId"),
             "skillName": s_name.strip(),
             "normalizedName": normalize_skill_name(s_name),
             "importance": float(item.get("importance", 1.0) or 1.0),
-            "minYears": float(item.get("minYears", 0.0) or 0.0)
+            "minYears": float(item.get("minYears", 0.0) or 0.0),
+            "vector": item.get("vector")
         })
 
     query = """
-    MATCH (j:JobPosition {jobId: $jobId})
-    OPTIONAL MATCH (j)-[old_r:REQUIRES_SKILL]->()
-    DELETE old_r
-    WITH j
+    MERGE (jd:JD {jdId: $jdId})
+    MERGE (jp:JobPosition {jobId: $jdId})
+    WITH jd, jp
+
+    // Xóa các liên kết SkillRequirement cũ của JD
+    OPTIONAL MATCH (jd)-[:REQUIRES]->(old_sr:SkillRequirement)
+    DETACH DELETE old_sr
+    WITH jd, jp
+
+    // Xóa các quan hệ REQUIRES_SKILL cũ
+    OPTIONAL MATCH (jd)-[old_r1:REQUIRES_SKILL]->()
+    DELETE old_r1
+    WITH jd, jp
+    OPTIONAL MATCH (jp)-[old_r2:REQUIRES_SKILL]->()
+    DELETE old_r2
+    WITH jd, jp
+
     UNWIND $skills AS req
+    // 1. Tạo node Skill chuẩn hóa
     MERGE (s:Skill {normalizedName: req.normalizedName})
     ON CREATE SET 
         s.skillId = req.skillId,
         s.name = req.skillName,
         s.createdAt = datetime()
-    MERGE (j)-[r:REQUIRES_SKILL]->(s)
-    SET r.importance = req.importance,
-        r.minYears = req.minYears,
-        r.updatedAt = datetime()
-    RETURN count(r) AS syncedCount
+
+    // 2. Tạo node SkillRequirement cụ thể cho JD
+    MERGE (sr:SkillRequirement {requirementId: req.requirementId})
+    SET sr.title = req.skillName,
+        sr.importance = req.importance,
+        sr.minYears = req.minYears,
+        sr.updatedAt = datetime()
+    WITH jd, jp, s, sr, req
+    FOREACH (_ IN CASE WHEN req.vector IS NOT NULL THEN [1] ELSE [] END |
+        SET sr.vector = req.vector
+    )
+
+    // 3. Liên kết JD -> SkillRequirement -> Skill
+    MERGE (jd)-[:REQUIRES]->(sr)
+    MERGE (sr)-[:REFERS_TO_SKILL]->(s)
+
+    // 4. Liên kết tắt trực tiếp để tương thích ngược
+    MERGE (jd)-[r1:REQUIRES_SKILL]->(s)
+    SET r1.importance = req.importance, r1.minYears = req.minYears
+    MERGE (jp)-[r2:REQUIRES_SKILL]->(s)
+    SET r2.importance = req.importance, r2.minYears = req.minYears
+
+    RETURN count(sr) AS syncedCount
     """
     client = get_neo4j_client()
     res = client.execute_write(query, {
-        "jobId": job_id,
+        "jdId": jd_id,
         "skills": clean_skills
     })
     return res[0]["syncedCount"] if res else 0
+
+
+def sync_job_skills_graph(job_id: int, skills: List[Dict[str, Any]]) -> int:
+    """
+    Đồng bộ danh sách kỹ năng yêu cầu của JobPosition/JD lên Neo4j theo lô (UNWIND).
+    Ủy quyền cho sync_jd_skill_requirements_graph để đồng bộ cả JD, JobPosition, SkillRequirement và Skill.
+    """
+    return sync_jd_skill_requirements_graph(jd_id=job_id, skills=skills)

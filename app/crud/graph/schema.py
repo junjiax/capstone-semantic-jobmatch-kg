@@ -7,8 +7,12 @@ CONSTRAINTS = [
     # 1. Uniqueness Constraints
     "CREATE CONSTRAINT cv_id_unique IF NOT EXISTS FOR (c:CV) REQUIRE c.cvId IS UNIQUE",
     "CREATE CONSTRAINT job_position_id_unique IF NOT EXISTS FOR (j:JobPosition) REQUIRE j.jobId IS UNIQUE",
+    "CREATE CONSTRAINT jd_id_unique IF NOT EXISTS FOR (j:JD) REQUIRE j.jdId IS UNIQUE",
     "CREATE CONSTRAINT skill_id_unique IF NOT EXISTS FOR (s:Skill) REQUIRE s.skillId IS UNIQUE",
     "CREATE CONSTRAINT skill_normalized_name_unique IF NOT EXISTS FOR (s:Skill) REQUIRE s.normalizedName IS UNIQUE",
+    "CREATE CONSTRAINT skill_req_id_unique IF NOT EXISTS FOR (sr:SkillRequirement) REQUIRE sr.requirementId IS UNIQUE",
+    "CREATE CONSTRAINT domain_name_unique IF NOT EXISTS FOR (d:Domain) REQUIRE d.name IS UNIQUE",
+    "CREATE CONSTRAINT expertise_name_unique IF NOT EXISTS FOR (e:Expertise) REQUIRE e.name IS UNIQUE",
     "CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.userId IS UNIQUE",
     "CREATE CONSTRAINT match_result_id_unique IF NOT EXISTS FOR (m:MatchResult) REQUIRE m.matchResultId IS UNIQUE",
 ]
@@ -17,6 +21,9 @@ INDEXES = [
     # 2. Property Indexes
     "CREATE INDEX skill_category_idx IF NOT EXISTS FOR (s:Skill) ON (s.category)",
     "CREATE INDEX job_status_idx IF NOT EXISTS FOR (j:JobPosition) ON (j.status)",
+    "CREATE INDEX jd_domain_idx IF NOT EXISTS FOR (j:JD) ON (j.domain)",
+    "CREATE INDEX jd_expertise_idx IF NOT EXISTS FOR (j:JD) ON (j.expertise)",
+    "CREATE INDEX jd_title_idx IF NOT EXISTS FOR (j:JD) ON (j.title)",
     "CREATE INDEX cv_user_id_idx IF NOT EXISTS FOR (c:CV) ON (c.userId)",
 ]
 
@@ -35,6 +42,16 @@ VECTOR_INDEXES = [
     """
     CREATE VECTOR INDEX job_vector_idx IF NOT EXISTS
     FOR (j:JobPosition) ON (j.embedding)
+    OPTIONS {
+      indexConfig: {
+        `vector.dimensions`: 384,
+        `vector.similarity_function`: 'cosine'
+      }
+    }
+    """,
+    """
+    CREATE VECTOR INDEX jd_vector_idx IF NOT EXISTS
+    FOR (j:JD) ON (j.embedding)
     OPTIONS {
       indexConfig: {
         `vector.dimensions`: 384,

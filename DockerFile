@@ -12,8 +12,8 @@ RUN apt-get update \
     && groupadd --system app \
     && useradd --system --gid app --create-home app
 
-COPY requirement.txt .
-RUN pip install --no-cache-dir -r requirement.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=app:app . .
 RUN mkdir -p /app/uploads /home/app/.cache/huggingface \

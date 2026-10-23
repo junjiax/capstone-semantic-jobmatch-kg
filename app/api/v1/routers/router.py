@@ -12,9 +12,13 @@ from app.api.v1.routers import (
     embedding,
     application_router as application,
     graph_router,
+    semantic_search,
 )
 
 api_router = APIRouter()
+
+
+api_router.include_router( semantic_search.router, prefix="/semantic-search", tags=["Semantic Search"])
 
 # ── Core & Standalone Routers ──────────────────────────────
 api_router.include_router(health.router, prefix="/health", tags=["Health"])

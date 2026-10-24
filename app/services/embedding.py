@@ -11,6 +11,7 @@ from app.crud.match_result import create_match_result
 from app.services.cv import *
 from app.services.job_service import *
 from app.services.education import *
+from app.services.text_embedding import build_skill_text
 # ------------------------------------------------------------------------------
 # Matching CV and Job Service
 # ------------------------------------------------------------------------------
@@ -294,3 +295,35 @@ def get_text_embedding(text: str) -> List[float]:
     except Exception as e:
         logger.error(f"Error generating embedding for text: {e}")
         return []
+
+
+#-------------------------------------------------------------------------------
+# Skill embedding
+#-------------------------------------------------------------------------------
+
+def generate_skill_vector(skill_title: str) -> List[float]:
+    """Sinh vector 384 chiều cho một tên kỹ năng."""
+    client = get_sentence_transformer()
+    clean_text = build_skill_text(skill_title)
+    if not clean_text:
+        return []
+    return client.encode(clean_text, normalize=True)
+
+def update_profile_skill_embedding(db: Session, profile_skill) -> bool:
+    """Cập nhật vector cho một bản ghi PROFILE_SKILL."""
+    if not profile_skill.SkillTitle:
+        return False
+    vector = generate_skill_vector(profile_skill.SkillTitle)
+    profile_skill.Vector = vector
+    db.add(profile_skill)
+    return True
+
+
+def update_jd_skill_embedding(db: Session, jd_skill) -> bool:
+    """Cập nhật vector cho một bản ghi JD_SKILL."""
+    if not jd_skill.Title:
+        return False
+    vector = generate_skill_vector(jd_skill.Title)
+    jd_skill.Vector = vector
+    db.add(jd_skill)
+    return True

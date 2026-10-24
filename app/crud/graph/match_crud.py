@@ -134,11 +134,16 @@ def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
 
 def save_cv_jd_match_result_graph(cv_id: int, jd_id: int, scores: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Lưu kết quả so khớp 1 vs 1 giữa CV và JD dưới dạng cạnh [:MATCHES_JD] trên Neo4j.
+    Lưu kết quả so khớp 1 vs 1 giữa CV và JD:
+    - Tạo node (:MatchResult) lưu điểm số mới nhất cho mỗi cặp CV–JD
+    - Tạo cạnh (:CV)-[:HAS_MATCH_RESULT]->(:MatchResult)-[:FOR_JD]->(:JD)
+    - Tạo cạnh tắt trực tiếp (:CV)-[:MATCHES_JD]->(:JD)
     """
     query = """
     MATCH (c:CV {cvId: $cvId})
     MERGE (jd:JD {jdId: $jdId})
+
+    // 1. Lưu quan hệ MATCHES_JD trực tiếp giữa CV và JD
     MERGE (c)-[r:MATCHES_JD]->(jd)
     SET r.totalResult = $totalResult,
         r.domainScore = $domainScore,
@@ -147,12 +152,30 @@ def save_cv_jd_match_result_graph(cv_id: int, jd_id: int, scores: Dict[str, Any]
         r.experienceScore = $experienceScore,
         r.qualificationScore = $qualificationScore,
         r.matchedAt = datetime()
-    RETURN r.totalResult AS totalResult
+
+    // 2. Tạo Node MatchResult đại diện cho thực thể kết quả đánh giá
+    MERGE (m:MatchResult {matchResultId: $matchResultId})
+    SET m.cvId = $cvId,
+        m.jdId = $jdId,
+        m.totalResult = $totalResult,
+        m.domainScore = $domainScore,
+        m.expertiseScore = $expertiseScore,
+        m.skillScore = $skillScore,
+        m.experienceScore = $experienceScore,
+        m.qualificationScore = $qualificationScore,
+        m.matchedAt = datetime()
+
+    MERGE (c)-[:HAS_MATCH_RESULT]->(m)
+    MERGE (m)-[:FOR_JD]->(jd)
+
+    RETURN r.totalResult AS totalResult, m.matchResultId AS matchResultId
     """
     client = get_neo4j_client()
+    match_result_id = f"{cv_id}:{jd_id}"
     res = client.execute_write(query, {
         "cvId": cv_id,
         "jdId": jd_id,
+        "matchResultId": match_result_id,
         "totalResult": float(scores.get("totalResult", 0.0)),
         "domainScore": float(scores.get("domainScore", 0.0)),
         "expertiseScore": float(scores.get("expertiseScore", 0.0)),

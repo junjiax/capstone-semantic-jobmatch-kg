@@ -11,13 +11,19 @@ from app.crud.graph.sync_crud import (
     upsert_skill_node,
     upsert_job_position_node,
     upsert_cv_node,
+    upsert_domain_node,
+    upsert_expertise_node,
+    upsert_jd_node,
     sync_cv_skills_graph,
     sync_job_skills_graph,
+    sync_jd_skill_requirements_graph,
 )
 from app.crud.graph.match_crud import (
     get_job_required_skills_graph,
     get_cv_skills_graph,
     analyze_skill_gap_graph,
+    save_cv_jd_match_result_graph,
+    get_domain_skill_gap_matrix_graph,
 )
 
 
@@ -130,6 +136,79 @@ def test_empty_cv_skills(neo4j_client):
     assert res["skillCoverageRatio"] == 0.0
 
 
+def test_jd_domain_and_skill_requirements(neo4j_client):
+    """Test 6: Kiểm tra tạo node JD, Domain, Expertise và SkillRequirement."""
+    # 1. Tạo Domain & Expertise
+    upsert_domain_node(name="Backend Development", description="Lập trình hệ thống máy chủ")
+    upsert_expertise_node(name="Python Engineering", domain_name="Backend Development")
+
+    # 2. Tạo JD liên kết với Domain & Expertise
+    upsert_jd_node(
+        jd_id=778,
+        title="Senior Backend Python Developer",
+        domain="Backend Development",
+        expertise="Python Engineering",
+        qualification="Bachelor of Computer Science",
+        experience_years=3
+    )
+
+    # 3. Đồng bộ SkillRequirement cho JD
+    jd_reqs = [
+        {"requirementId": 77801, "skillName": "Python", "importance": 2.0, "minYears": 3.0},
+        {"requirementId": 77802, "skillName": "FastAPI", "importance": 1.5, "minYears": 2.0},
+    ]
+    sync_jd_skill_requirements_graph(jd_id=778, skills=jd_reqs)
+
+    # 4. Kiểm tra trên đồ thị
+    q_jd = "MATCH (jd:JD {jdId: 778})-[:BELONGS_TO_DOMAIN]->(d:Domain {name: 'Backend Development'}) RETURN count(jd) AS total"
+    assert neo4j_client.execute_read(q_jd)[0]["total"] == 1
+
+    q_req = "MATCH (jd:JD {jdId: 778})-[:REQUIRES]->(sr:SkillRequirement)-[:REFERS_TO_SKILL]->(s:Skill) RETURN count(sr) AS total"
+    assert neo4j_client.execute_read(q_req)[0]["total"] == 2
+
+
+def test_problem1_skill_matching_score(neo4j_client):
+    """
+    Test 7: BÀI TOÁN 1: Skill Matching (1 CV vs 1 JD).
+    Trả lời: 'CV của tôi có phù hợp với JD này không?'
+    Kiểm tra điểm số trả về là float [0, 1] và lưu cạnh MATCHES_JD.
+    """
+    scores = {
+        "totalResult": 0.8250,
+        "skillScore": 0.8500,
+        "domainScore": 0.8000,
+        "expertiseScore": 0.8500,
+        "experienceScore": 0.8000,
+        "qualificationScore": 0.8000
+    }
+    save_cv_jd_match_result_graph(cv_id=888, jd_id=778, scores=scores)
+
+    # Kiểm tra cạnh MATCHES_JD
+    q_match = "MATCH (c:CV {cvId: 888})-[r:MATCHES_JD]->(jd:JD {jdId: 778}) RETURN r.totalResult AS totalResult, r.skillScore AS skillScore"
+    records = neo4j_client.execute_read(q_match)
+    assert len(records) == 1
+    total_score = records[0]["totalResult"]
+    assert 0.0 <= total_score <= 1.0
+    assert pytest.approx(total_score, 0.001) == 0.8250
+
+
+def test_problem2_domain_gap_matrix(neo4j_client):
+    """
+    Test 8: BÀI TOÁN 2: Skill Gap Analysis & Domain Orientation (1 CV vs Many Domains).
+    Trả lời: 'CV của tôi có thể apply vào những domain nào trong CNTT?'
+    Kiểm tra ma trận tương quan và tỷ lệ bao phủ theo domain.
+    """
+    # CV 888 có kỹ năng Python, FastAPI, React (đã sync ở test 3)
+    domain_gaps = get_domain_skill_gap_matrix_graph(cv_id=888, target_domains=["Backend Development"])
+    assert len(domain_gaps) == 1
+    backend_gap = domain_gaps[0]
+    assert backend_gap["domainName"] == "Backend Development"
+    assert backend_gap["totalDomainSkills"] >= 2
+    # Tỷ lệ bao phủ phải nằm trong khoảng [0.0, 1.0]
+    assert 0.0 <= backend_gap["skillCoverageRatio"] <= 1.0
+    assert backend_gap["totalMatchedSkills"] >= 1
+
+
 def test_cleanup_test_data(neo4j_client):
     """Dọn dẹp dữ liệu test."""
     cleanup_query = """
@@ -137,8 +216,17 @@ def test_cleanup_test_data(neo4j_client):
     WITH count(*) AS dummy
     MATCH (c:CV) WHERE c.cvId IN [888, 999] DETACH DELETE c
     WITH count(*) AS dummy
-    MATCH (j:JobPosition) WHERE j.jobId IN [777] DETACH DELETE j
+    MATCH (j:JobPosition) WHERE j.jobId IN [777, 778] DETACH DELETE j
+    WITH count(*) AS dummy
+    MATCH (jd:JD) WHERE jd.jdId IN [777, 778] DETACH DELETE jd
+    WITH count(*) AS dummy
+    MATCH (sr:SkillRequirement) WHERE sr.requirementId IN [77801, 77802] DETACH DELETE sr
+    WITH count(*) AS dummy
+    MATCH (d:Domain) WHERE d.name IN ['Backend Development'] DETACH DELETE d
+    WITH count(*) AS dummy
+    MATCH (e:Expertise) WHERE e.name IN ['Python Engineering'] DETACH DELETE e
     WITH count(*) AS dummy
     MATCH (s:Skill) WHERE s.skillId IN [9991, 101, 102, 103, 104, 105] DETACH DELETE s
     """
     neo4j_client.execute_write(cleanup_query)
+

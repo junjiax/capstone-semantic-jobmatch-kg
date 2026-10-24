@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
@@ -158,3 +158,46 @@ async def find_candidates_for_job(
         message=f"Top {len(candidates)} candidates retrieved for job {job_id}",
         data=candidates
     )
+
+
+@router.post(
+    "/match/{cv_id}/{jd_id}",
+    summary="BÀI TOÁN 1: So khớp 1 CV vs 1 JD -> Điểm số thực [0, 1]",
+    description="Trả lời câu hỏi: CV của tôi có phù hợp để apply vào job này không? Tính toán độ tương hợp đa chiều [0, 1] và lưu quan hệ MATCHES_JD lên Knowledge Graph.",
+)
+async def match_cv_jd(
+    cv_id: int,
+    jd_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = graph_service.calculate_cv_jd_matching_service(db, cv_id, jd_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return ResponseSchema(
+        success=True,
+        message=f"CV {cv_id} matching with JD {jd_id} completed",
+        data=result
+    )
+
+
+@router.get(
+    "/matrix/domain-gap/{cv_id}",
+    summary="BÀI TOÁN 2: Ma trận tương quan Domain & Skill Gap (1 CV vs Many Domains)",
+    description="Trả lời câu hỏi: CV của tôi có thể apply vào những domain nào trong CNTT? Trả về ma trận N * K với các giá trị trong [0, 1], xếp hạng Domain và gợi ý bù đắp khoảng cách kỹ năng.",
+)
+async def get_domain_matrix_gap(
+    cv_id: int,
+    target_domains: Optional[List[str]] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    matrix_res = graph_service.calculate_domain_skill_gap_matrix_service(db, cv_id, target_domains)
+    if "error" in matrix_res:
+        raise HTTPException(status_code=404, detail=matrix_res["error"])
+    return ResponseSchema(
+        success=True,
+        message=f"Domain correlation matrix generated for CV {cv_id}",
+        data=matrix_res
+    )
+

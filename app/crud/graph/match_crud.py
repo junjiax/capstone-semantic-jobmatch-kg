@@ -37,47 +37,60 @@ def get_cv_skills_graph(cv_id: int) -> List[Dict[str, Any]]:
 
 def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
     """
-    Truy vấn phân tích Skill Gap và giải thích chi tiết mức độ phù hợp giữa một CV và một vị trí việc làm.
+    Truy vấn phân tích Skill Gap và giải thích chi tiết mức độ phù hợp giữa một CV và một vị trí việc làm / JD.
     Phân tách rõ ràng:
     1. Kỹ năng khớp (Matched Skills)
     2. Kỹ năng còn thiếu (Missing Skills - Gap)
     3. Kỹ năng bổ trợ (Extra Skills / Strengths)
     4. Tỷ lệ bao phủ kỹ năng có trọng số (Weighted Skill Coverage Ratio)
+    Hỗ trợ tìm qua cả node (:JobPosition) và (:JD) cũng như qua (:SkillRequirement).
     """
     query = """
     MATCH (c:CV {cvId: $cvId})
-    MATCH (j:JobPosition {jobId: $jobId})
+    OPTIONAL MATCH (jp:JobPosition {jobId: $jobId})
+    OPTIONAL MATCH (jd:JD {jdId: $jobId})
+    WITH c, coalesce(jd, jp) AS j
+    WHERE j IS NOT NULL
 
-    // 1. Matched Skills: CV có và Job yêu cầu
-    OPTIONAL MATCH (c)-[hc:HAS_SKILL]->(matched:Skill)<-[rj:REQUIRES_SKILL]-(j)
-    WITH c, j, collect(DISTINCT CASE WHEN matched IS NOT NULL THEN {
-        skillId: matched.skillId,
-        name: matched.name,
-        category: matched.category,
-        importance: coalesce(rj.importance, 1.0),
-        confidence: coalesce(hc.confidence, 1.0)
-    } END) AS matchedSkills, sum(coalesce(rj.importance, 0.0)) AS matchedWeight
+    // 1. Matched Skills: CV có và Job/JD yêu cầu
+    OPTIONAL MATCH (c)-[hc:HAS_SKILL]->(matched:Skill)
+    WHERE (j)-[:REQUIRES_SKILL]->(matched) OR (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(matched)
+    OPTIONAL MATCH (j)-[rj:REQUIRES_SKILL]->(matched)
+    WITH c, j,
+         [s IN collect(DISTINCT CASE WHEN matched IS NOT NULL THEN {
+             skillId: matched.skillId,
+             name: matched.name,
+             category: matched.category,
+             importance: coalesce(rj.importance, 1.0),
+             confidence: coalesce(hc.confidence, 1.0)
+         } END) WHERE s IS NOT NULL] AS matchedSkills,
+         sum(CASE WHEN matched IS NOT NULL THEN coalesce(rj.importance, 1.0) ELSE 0.0 END) AS matchedWeight
 
-    // 2. Missing Skills: Job yêu cầu nhưng CV KHÔNG có
-    OPTIONAL MATCH (j)-[rj2:REQUIRES_SKILL]->(missing:Skill)
-    WHERE NOT (c)-[:HAS_SKILL]->(missing)
-    WITH c, j, matchedSkills, matchedWeight, collect(DISTINCT CASE WHEN missing IS NOT NULL THEN {
-        skillId: missing.skillId,
-        name: missing.name,
-        category: missing.category,
-        importance: coalesce(rj2.importance, 1.0),
-        minYears: coalesce(rj2.minYears, 0.0)
-    } END) AS missingSkills, sum(coalesce(rj2.importance, 0.0)) AS missingWeight
+    // 2. Missing Skills: Job/JD yêu cầu nhưng CV KHÔNG có
+    OPTIONAL MATCH (missing:Skill)
+    WHERE ((j)-[:REQUIRES_SKILL]->(missing) OR (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(missing))
+      AND NOT (c)-[:HAS_SKILL]->(missing)
+    OPTIONAL MATCH (j)-[rj2:REQUIRES_SKILL]->(missing)
+    WITH c, j, matchedSkills, matchedWeight,
+         [s IN collect(DISTINCT CASE WHEN missing IS NOT NULL THEN {
+             skillId: missing.skillId,
+             name: missing.name,
+             category: missing.category,
+             importance: coalesce(rj2.importance, 1.0),
+             minYears: coalesce(rj2.minYears, 0.0)
+         } END) WHERE s IS NOT NULL] AS missingSkills,
+         sum(CASE WHEN missing IS NOT NULL THEN coalesce(rj2.importance, 1.0) ELSE 0.0 END) AS missingWeight
 
-    // 3. Extra Skills: CV có nhưng Job KHÔNG yêu cầu
+    // 3. Extra Skills: CV có nhưng Job/JD KHÔNG yêu cầu
     OPTIONAL MATCH (c)-[hc2:HAS_SKILL]->(extra:Skill)
-    WHERE NOT (j)-[:REQUIRES_SKILL]->(extra)
-    WITH matchedSkills, matchedWeight, missingSkills, missingWeight, collect(DISTINCT CASE WHEN extra IS NOT NULL THEN {
-        skillId: extra.skillId,
-        name: extra.name,
-        category: extra.category,
-        confidence: coalesce(hc2.confidence, 1.0)
-    } END) AS extraSkills
+    WHERE NOT (j)-[:REQUIRES_SKILL]->(extra) AND NOT (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(extra)
+    WITH matchedSkills, matchedWeight, missingSkills, missingWeight,
+         [s IN collect(DISTINCT CASE WHEN extra IS NOT NULL THEN {
+             skillId: extra.skillId,
+             name: extra.name,
+             category: extra.category,
+             confidence: coalesce(hc2.confidence, 1.0)
+         } END) WHERE s IS NOT NULL] AS extraSkills
 
     // 4. Tính toán tỷ lệ bao phủ kỹ năng (Skill Coverage)
     WITH matchedSkills, missingSkills, extraSkills,
@@ -117,6 +130,110 @@ def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
         "extraSkills": [],
         "skillCoverageRatio": 0.0,
     }
+
+
+def save_cv_jd_match_result_graph(cv_id: int, jd_id: int, scores: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Lưu kết quả so khớp 1 vs 1 giữa CV và JD:
+    - Tạo node (:MatchResult) lưu điểm số mới nhất cho mỗi cặp CV–JD
+    - Tạo cạnh (:CV)-[:HAS_MATCH_RESULT]->(:MatchResult)-[:FOR_JD]->(:JD)
+    - Tạo cạnh tắt trực tiếp (:CV)-[:MATCHES_JD]->(:JD)
+    """
+    query = """
+    MATCH (c:CV {cvId: $cvId})
+    MERGE (jd:JD {jdId: $jdId})
+
+    // 1. Lưu quan hệ MATCHES_JD trực tiếp giữa CV và JD
+    MERGE (c)-[r:MATCHES_JD]->(jd)
+    SET r.totalResult = $totalResult,
+        r.domainScore = $domainScore,
+        r.expertiseScore = $expertiseScore,
+        r.skillScore = $skillScore,
+        r.experienceScore = $experienceScore,
+        r.qualificationScore = $qualificationScore,
+        r.matchedAt = datetime()
+
+    // 2. Tạo Node MatchResult đại diện cho thực thể kết quả đánh giá
+    MERGE (m:MatchResult {matchResultId: $matchResultId})
+    SET m.cvId = $cvId,
+        m.jdId = $jdId,
+        m.totalResult = $totalResult,
+        m.domainScore = $domainScore,
+        m.expertiseScore = $expertiseScore,
+        m.skillScore = $skillScore,
+        m.experienceScore = $experienceScore,
+        m.qualificationScore = $qualificationScore,
+        m.matchedAt = datetime()
+
+    MERGE (c)-[:HAS_MATCH_RESULT]->(m)
+    MERGE (m)-[:FOR_JD]->(jd)
+
+    RETURN r.totalResult AS totalResult, m.matchResultId AS matchResultId
+    """
+    client = get_neo4j_client()
+    match_result_id = f"{cv_id}:{jd_id}"
+    res = client.execute_write(query, {
+        "cvId": cv_id,
+        "jdId": jd_id,
+        "matchResultId": match_result_id,
+        "totalResult": float(scores.get("totalResult", 0.0)),
+        "domainScore": float(scores.get("domainScore", 0.0)),
+        "expertiseScore": float(scores.get("expertiseScore", 0.0)),
+        "skillScore": float(scores.get("skillScore", 0.0)),
+        "experienceScore": float(scores.get("experienceScore", 0.0)),
+        "qualificationScore": float(scores.get("qualificationScore", 0.0)),
+    })
+    return res[0] if res else {}
+
+
+def get_domain_skill_gap_matrix_graph(cv_id: int, target_domains: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """
+    Truy vấn phân tích Skill Gap cho CV đối với từng Domain trong CNTT (Bài toán 2: 1 CV vs Many JDs/Domains).
+    Trả về tỷ lệ bao phủ kỹ năng, danh sách kỹ năng khớp và kỹ năng còn thiếu của từng domain.
+    """
+    query = """
+    MATCH (c:CV {cvId: $cvId})
+    MATCH (d:Domain)
+    WHERE $targetDomains IS NULL OR size($targetDomains) = 0 OR d.name IN $targetDomains
+
+    // Tìm tất cả các kỹ năng được yêu cầu bởi các JD thuộc Domain này
+    OPTIONAL MATCH (jd:JD)-[:BELONGS_TO_DOMAIN]->(d)
+    OPTIONAL MATCH (jd)-[:REQUIRES_SKILL]->(s1:Skill)
+    OPTIONAL MATCH (jd)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(s2:Skill)
+    WITH c, d, [s IN (collect(DISTINCT s1) + collect(DISTINCT s2)) WHERE s IS NOT NULL] AS rawSkills
+    UNWIND (CASE WHEN size(rawSkills) = 0 THEN [null] ELSE rawSkills END) AS rawS
+    WITH c, d, [s IN collect(DISTINCT rawS) WHERE s IS NOT NULL] AS domainSkills
+
+    // Lọc kỹ năng đã có trong CV
+    OPTIONAL MATCH (c)-[:HAS_SKILL]->(cvSkill:Skill)
+    WITH c, d, domainSkills, collect(DISTINCT cvSkill) AS cvSkills
+
+    WITH d.name AS domainName,
+         [s IN domainSkills WHERE s IN cvSkills | {skillId: s.skillId, name: s.name, category: s.category}] AS matchedSkills,
+         [s IN domainSkills WHERE NOT s IN cvSkills AND s IS NOT NULL | {skillId: s.skillId, name: s.name, category: s.category}] AS missingSkills,
+         size(domainSkills) AS totalDomainSkills
+
+    WITH domainName, matchedSkills, missingSkills, totalDomainSkills,
+         CASE WHEN totalDomainSkills > 0 
+              THEN round(toFloat(size(matchedSkills)) / toFloat(totalDomainSkills), 4)
+              ELSE 0.0 END AS skillCoverageRatio
+    RETURN {
+        domainName: domainName,
+        totalDomainSkills: totalDomainSkills,
+        totalMatchedSkills: size(matchedSkills),
+        totalMissingSkills: size(missingSkills),
+        matchedSkills: matchedSkills,
+        missingSkills: missingSkills,
+        skillCoverageRatio: skillCoverageRatio
+    } AS domainGap
+    ORDER BY skillCoverageRatio DESC, domainName ASC
+    """
+    client = get_neo4j_client()
+    res = client.execute_read(query, {
+        "cvId": cv_id,
+        "targetDomains": target_domains or []
+    })
+    return [record["domainGap"] for record in res if "domainGap" in record]
 
 
 def hybrid_match_cvs_for_job_graph(

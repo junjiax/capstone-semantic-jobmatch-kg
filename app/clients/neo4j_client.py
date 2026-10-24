@@ -27,21 +27,33 @@ class Neo4jClient:
                     uri = settings.NEO4J_URI
                     user = settings.NEO4J_USER
                     password = settings.NEO4J_PASSWORD
-                    try:
-                        logger.info("Connecting to Neo4j at %s ...", uri)
-                        self._driver = GraphDatabase.driver(
-                            uri,
-                            auth=(user, password),
-                            max_connection_lifetime=30 * 60,
-                            max_connection_pool_size=50,
-                            connection_acquisition_timeout=2 * 60,
-                        )
-                        self._driver.verify_connectivity()
-                        logger.info("Connected to Neo4j successfully at %s", uri)
-                    except Exception as e:
-                        logger.error("Failed to connect to Neo4j: %s", e)
+                    uris_to_try = [uri]
+                    if "neo4j:" in uri:
+                        uris_to_try.append(uri.replace("neo4j:", "localhost:"))
+
+                    connected = False
+                    last_err = None
+                    for target_uri in uris_to_try:
+                        try:
+                            logger.info("Connecting to Neo4j at %s ...", target_uri)
+                            self._driver = GraphDatabase.driver(
+                                target_uri,
+                                auth=(user, password),
+                                max_connection_lifetime=30 * 60,
+                                max_connection_pool_size=50,
+                                connection_acquisition_timeout=2 * 60,
+                            )
+                            self._driver.verify_connectivity()
+                            logger.info("Connected to Neo4j successfully at %s", target_uri)
+                            connected = True
+                            break
+                        except Exception as e:
+                            last_err = e
+                            logger.warning("Could not connect to Neo4j at %s: %s", target_uri, e)
+
+                    if not connected:
                         self._driver = None
-                        raise RuntimeError(f"Neo4j connection error: {e}") from e
+                        raise RuntimeError(f"Neo4j connection error: {last_err}") from last_err
         return self._driver
 
     def close(self):

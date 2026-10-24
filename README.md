@@ -13,7 +13,7 @@ Backend API dùng FastAPI để quản lý hồ sơ ứng viên/CV, tin tuyển 
 - `uploads/`: dữ liệu upload; Docker Compose mount thư mục này vào container.
 - `DockerFile`, `docker-compose.yml`: build và chạy API cùng PostgreSQL/pgAdmin.
 
-Project dùng Python 3.13 trong Docker image và các dependency được khai báo trong `requirement.txt`.
+Project dùng Python 3.13 trong Docker image và các dependency được khai báo trong `requirements.txt`.
 
 ## Yêu cầu
 
@@ -121,7 +121,7 @@ Trong CMD:
 py -3.13 -m venv venv
 venv\Scripts\activate.bat
 python -m pip install --upgrade pip
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 
 Trong PowerShell, thay lệnh kích hoạt bằng:
@@ -259,3 +259,26 @@ python -m pytest
 ```
 
 `tests/test_db.py` kiểm tra kết nối database; test này cần database khả dụng và `.env` hợp lệ.
+
+
+## Schema hiện tại và Neo4j
+
+Source hiện sử dụng các bảng `USER`, `PROFILE`, `JD`, `PROFILE_SKILL`,
+`PROFILE_EDU`, `PROFILE_WORK_EXP`, `JD_SKILL` và `RESULT`.
+Nếu database còn các bảng cũ `users`, `CVs`, `Jobs`, chạy một lần:
+
+```powershell
+.\venv\Scripts\python.exe -m scripts.upgrade_current_schema
+.\venv\Scripts\python.exe -m scripts.migrate_pg_to_neo4j
+```
+
+Script tạo các bảng mới và sao chép tài khoản, CV, JD và tên kỹ năng; giữ nguyên
+các bảng cũ. Lịch sử kết quả, kinh nghiệm, học vấn và embedding cũ vẫn nằm trong
+các bảng cũ, chưa được chuyển bởi script này.
+
+Bật Docker Desktop trước khi chạy `docker compose up -d --build`.
+Khi chạy Python trực tiếp trên Windows, dùng `NEO4J_URI=bolt://localhost:7687`.
+Backend trong Compose dùng `bolt://neo4j:7687` qua mạng container.
+Neo4j Browser: <http://localhost:7474>.
+
+Image Docker mặc định cài PyTorch CPU để tránh tải bộ CUDA. Compose gắn `./app` vào `/app/app` ở chế độ chỉ đọc; sau khi sửa source, chạy `docker compose restart web`.

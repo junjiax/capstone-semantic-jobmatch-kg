@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 

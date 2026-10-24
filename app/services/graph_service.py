@@ -1,24 +1,15 @@
 import logging
 import math
 from typing import Dict, Any, List, Optional
-from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.User import User
 from app.models.job import Job
-from app.models.skill import Skill
 from app.models.cv import CV
-from app.models.job_skill import JobSkill
-from app.models.cv_skill import CVSkill
-from app.models.cv_embedding import CVEmbedding
-from app.models.job_embedding import JobEmbedding
 from app.models.jd import JD
 from app.models.jd_skill import JDSkill
 from app.models.profile import Profile
 from app.models.profile_skill import ProfileSkill
-from app.models.profile_edu import ProfileEdu
-from app.models.profile_work_exp import ProfileWorkExp
-from app.models.result import Result
 
 from app.crud.graph import schema as graph_schema
 from app.crud.graph import sync_crud as graph_sync
@@ -73,197 +64,75 @@ def get_domain_expertise_for_title(title: str) -> tuple[str, str]:
     return "Information Technology", "General IT"
 
 
+def _profile_vector(profile):
+    vectors = [list(item.Vector) for group in (profile.skills, profile.work_experiences, profile.educations)
+               for item in group if item.Vector is not None]
+    if not vectors:
+        return None
+    return [sum(values) / len(vectors) for values in zip(*vectors)]
+
+
+def _skill_payload(title):
+    # Skill IDs are shared by normalized name across PROFILE_SKILL and JD_SKILL.
+    from hashlib import sha256
+    normalized = graph_sync.normalize_skill_name(title)
+    return {"skillId": int.from_bytes(sha256(normalized.encode()).digest()[:7], "big"),
+            "skillName": title}
+
+
 def sync_cv_to_graph(db: Session, cv_id: int) -> bool:
-    """Đồng bộ một CV và danh sách kỹ năng của nó từ PostgreSQL sang Neo4j."""
-    from sqlalchemy import text
-    try:
-        # Thử đọc qua raw SQL từ bảng CVs
-        cv_row = db.execute(
-            text('SELECT "Id", "UserId", "FileType", "Language", "Summary", "CleanText" FROM "CVs" WHERE "Id" = :id'),
-            {"id": cv_id}
-        ).fetchone()
-
-        if not cv_row:
-            logger.warning("CV %s not found in DB to sync.", cv_id)
-            return False
-
-        c_id, user_id, file_type, lang, summary, clean_text = cv_row
-        
-        # Lấy embedding vector (nếu có)
-        emb_row = db.execute(
-            text('SELECT "Vector" FROM "CVEmbeddings" WHERE "CVId" = :cv_id ORDER BY "CreatedAt" DESC LIMIT 1'),
-            {"cv_id": cv_id}
-        ).fetchone()
-        vec = list(emb_row[0]) if emb_row and emb_row[0] is not None else None
-
-        # Upsert Node CV & User
-        graph_sync.upsert_cv_node(
-            cv_id=c_id,
-            user_id=user_id,
-            language=lang or "en",
-            summary=summary or clean_text or "",
-            embedding=vec
-        )
-
-        # Lấy danh sách kỹ năng từ CVSkills
-        skills_payload = []
-        cv_skills = db.execute(
-            text('SELECT cs."Id", cs."SkillId", s."Name", cs."Confidence", cs."Source" FROM "CVSkills" cs JOIN "Skills" s ON cs."SkillId" = s."Id" WHERE cs."CVId" = :cv_id'),
-            {"cv_id": cv_id}
-        ).fetchall()
-        for cs in cv_skills:
-            skills_payload.append({
-                "skillId": cs[1],
-                "skillName": cs[2],
-                "confidence": float(cs[3]) if cs[3] is not None else 1.0,
-                "source": cs[4] or "parsed"
-            })
-
-        graph_sync.sync_cv_skills_graph(cv_id, skills_payload)
-        logger.info("Successfully synced CV %s and %s skills to Neo4j.", cv_id, len(skills_payload))
-        return True
-    except Exception as e:
-        logger.error("Failed to sync CV %s to Neo4j: %s", cv_id, e)
+    """Sync the current PROFILE schema to Neo4j."""
+    profile = db.query(Profile).filter(Profile.Id == cv_id).first()
+    if profile is None:
         return False
+    graph_sync.upsert_cv_node(cv_id=profile.Id, user_id=profile.UserId,
+                              summary=profile.CleanText or profile.RawText or "",
+                              embedding=_profile_vector(profile))
+    graph_sync.sync_cv_skills_graph(cv_id, [_skill_payload(s.SkillTitle) for s in profile.skills])
+    return True
 
 
 def sync_job_to_graph(db: Session, job_id: int) -> bool:
-    """Đồng bộ JobPosition, JD, Domain, Expertise và SkillRequirement sang Neo4j."""
-    from sqlalchemy import text
-    try:
-        job_row = db.execute(
-            text('SELECT "Id", "Title", "Description", "RequirementsText", "MinExperience", "EducationLevel", "Status" FROM "Jobs" WHERE "Id" = :id'),
-            {"id": job_id}
-        ).fetchone()
-
-        if not job_row:
-            logger.warning("Job %s not found in DB to sync.", job_id)
-            return False
-
-        j_id, title, desc, req_text, min_exp, edu_level, status = job_row
-        min_exp_float = float(min_exp) if min_exp is not None else 0.0
-
-        # Lấy embedding vector (nếu có)
-        emb_row = db.execute(
-            text('SELECT "Vector" FROM "JobEmbeddings" WHERE "JobId" = :job_id ORDER BY "CreatedAt" DESC LIMIT 1'),
-            {"job_id": job_id}
-        ).fetchone()
-        vec = list(emb_row[0]) if emb_row and emb_row[0] is not None else None
-
-        domain_str, expertise_str = get_domain_expertise_for_title(title)
-
-        # 1. Upsert Domain và Expertise
-        graph_sync.upsert_domain_node(name=domain_str)
-        graph_sync.upsert_expertise_node(name=expertise_str, domain_name=domain_str)
-
-        # 2. Upsert Node JobPosition (tương thích ngược)
-        graph_sync.upsert_job_position_node(
-            job_id=j_id,
-            title=title,
-            min_experience=min_exp_float,
-            education_level=str(edu_level) if edu_level else "BACHELOR",
-            status=str(status) if status else "OPEN",
-            embedding=vec
-        )
-
-        # 3. Upsert Node JD chi tiết
-        graph_sync.upsert_jd_node(
-            jd_id=j_id,
-            title=title,
-            domain=domain_str,
-            expertise=expertise_str,
-            qualification=str(edu_level) if edu_level else "BACHELOR",
-            responsibility=desc or "",
-            experience_years=int(min_exp_float),
-            raw_text=req_text or "",
-            clean_text=desc or "",
-            embedding=vec
-        )
-
-        # 4. Lấy danh sách kỹ năng yêu cầu từ JobSkills
-        job_skills = db.execute(
-            text('SELECT js."Id", js."SkillId", s."Name", js."Importance", js."MinYears" FROM "JobSkills" js JOIN "Skills" s ON js."SkillId" = s."Id" WHERE js."JobId" = :job_id'),
-            {"job_id": job_id}
-        ).fetchall()
-        skills_payload = []
-        for js in job_skills:
-            skills_payload.append({
-                "requirementId": js[0],
-                "skillId": js[1],
-                "skillName": js[2],
-                "importance": float(js[3]) if js[3] is not None else 1.0,
-                "minYears": float(js[4]) if js[4] is not None else 0.0
-            })
-
-        graph_sync.sync_jd_skill_requirements_graph(job_id, skills_payload)
-        logger.info("Successfully synced JD/Job %s and %s required skills to Neo4j.", job_id, len(skills_payload))
-        return True
-    except Exception as e:
-        logger.error("Failed to sync Job %s to Neo4j: %s", job_id, e)
+    """Sync the current JD schema to Neo4j."""
+    jd = db.query(JD).filter(JD.Id == job_id).first()
+    if jd is None:
         return False
+    domain, expertise = get_domain_expertise_for_title(jd.Title)
+    domain, expertise = jd.Domain or domain, jd.Expertise or expertise
+    graph_sync.upsert_domain_node(name=domain)
+    graph_sync.upsert_expertise_node(name=expertise, domain_name=domain)
+    vector = list(jd.VectorTitle) if jd.VectorTitle is not None else None
+    graph_sync.upsert_job_position_node(job_id=jd.Id, title=jd.Title,
+        min_experience=float(jd.Experience or 0), education_level=jd.Qualification or "",
+        embedding=vector)
+    graph_sync.upsert_jd_node(jd_id=jd.Id, title=jd.Title, domain=domain, expertise=expertise,
+        qualification=jd.Qualification or "", responsibility=jd.Responsibility or "",
+        experience_years=jd.Experience or 0, raw_text=jd.RawText or "",
+        clean_text=jd.CleanText or "", embedding=vector)
+    skills = [dict(_skill_payload(s.Title), requirementId=s.Id,
+                   vector=list(s.Vector) if s.Vector is not None else None) for s in jd.skills]
+    graph_sync.sync_jd_skill_requirements_graph(job_id, skills)
+    return True
 
 
 def sync_all_from_postgres(db: Session) -> Dict[str, int]:
-    """
-    Đồng bộ toàn bộ dữ liệu từ PostgreSQL sang Neo4j:
-    Users -> Skills -> Jobs/JDs/Domains/Expertises -> CVs -> Relationships.
-    """
-    from sqlalchemy import text
-    stats = {"users": 0, "skills": 0, "jobs": 0, "cvs": 0}
-
-    # 1. Khởi tạo schema & constraints
+    """Sync real records without creating sample matching scores."""
     setup_knowledge_graph_schema()
-
-    # 2. Đồng bộ Skills master
-    skills = db.execute(text('SELECT "Id", "Name", "Category", "Description" FROM "Skills"')).fetchall()
-    for s in skills:
-        graph_sync.upsert_skill_node(
-            skill_id=s[0],
-            name=s[1],
-            category=s[2],
-            description=s[3]
-        )
-        stats["skills"] += 1
-
-    # 3. Đồng bộ Users
-    users = db.execute(text('SELECT "Id", "email", "full_name", "role" FROM "users"')).fetchall()
-    for u in users:
-        graph_sync.upsert_user_node(
-            user_id=u[0],
-            email=u[1],
-            full_name=u[2],
-            role=u[3]
-        )
+    stats = {"users": 0, "skills": 0, "jobs": 0, "cvs": 0}
+    for user in db.query(User).all():
+        graph_sync.upsert_user_node(user_id=user.Id, email=user.Email,
+            full_name=user.FullName, role=user.Role.value)
         stats["users"] += 1
-
-    # 4. Đồng bộ Jobs và JDs
-    job_ids = db.execute(text('SELECT "Id" FROM "Jobs"')).fetchall()
-    for (jid,) in job_ids:
-        sync_job_to_graph(db, jid)
-        stats["jobs"] += 1
-
-    # 5. Đồng bộ CVs
-    cv_ids = db.execute(text('SELECT "Id" FROM "CVs"')).fetchall()
-    for (cid,) in cv_ids:
-        sync_cv_to_graph(db, cid)
-        stats["cvs"] += 1
-
-    # 6. Tạo match mẫu để có cạnh MATCHES_JD
-    if stats["cvs"] > 0 and stats["jobs"] > 0:
-        c_id = cv_ids[0][0]
-        # Tìm job_id có skills (Job 3 hoặc job đầu tiên)
-        target_jid = 3 if any(j[0] == 3 for j in job_ids) else job_ids[0][0]
-        scores = {
-            "totalResult": 0.85,
-            "skillScore": 0.75,
-            "domainScore": 0.90,
-            "expertiseScore": 0.85,
-            "experienceScore": 1.0,
-            "qualificationScore": 1.0
-        }
-        graph_match.save_cv_jd_match_result_graph(c_id, target_jid, scores)
-
-    logger.info("Batch sync completed: %s", stats)
+    names = {s.SkillTitle for s in db.query(ProfileSkill).all()}
+    names.update(s.Title for s in db.query(JDSkill).all())
+    for name in names:
+        payload = _skill_payload(name)
+        graph_sync.upsert_skill_node(skill_id=payload["skillId"], name=name)
+        stats["skills"] += 1
+    for jd in db.query(JD).all():
+        stats["jobs"] += int(sync_job_to_graph(db, jd.Id))
+    for profile in db.query(Profile).all():
+        stats["cvs"] += int(sync_cv_to_graph(db, profile.Id))
     return stats
 
 
@@ -294,8 +163,7 @@ def calculate_cv_jd_matching_service(
 
     # 2. Tính Vector Similarity từng khía cạnh
     # Lấy vector CV
-    cv_emb = db.query(CVEmbedding).filter(CVEmbedding.CVId == cv_id).order_by(CVEmbedding.CreatedAt.desc()).first()
-    cv_vec = list(cv_emb.Vector) if (cv_emb and cv_emb.Vector is not None) else None
+    cv_vec = _profile_vector(cv_record)
 
     # Lấy vector kỹ năng CV
     cv_skill_vec = None
@@ -438,8 +306,7 @@ def calculate_domain_skill_gap_matrix_service(
             ]
 
     # 2. Lấy dữ liệu Vector của CV
-    cv_emb = db.query(CVEmbedding).filter(CVEmbedding.CVId == cv_id).order_by(CVEmbedding.CreatedAt.desc()).first()
-    cv_vec = list(cv_emb.Vector) if (cv_emb and cv_emb.Vector is not None) else None
+    cv_vec = _profile_vector(cv_record)
 
     cv_skill_vec = None
     if hasattr(cv_record, "skills") and cv_record.skills:
@@ -589,8 +456,7 @@ def hybrid_search_candidates_service(db: Session, job_id: int, top_k: int = 10) 
     if not job_record:
         return []
 
-    emb_record = db.query(JobEmbedding).filter(JobEmbedding.JobId == job_id).order_by(JobEmbedding.CreatedAt.desc()).first()
-    job_vector = list(emb_record.Vector) if (emb_record and emb_record.Vector is not None) else None
+    job_vector = list(job_record.VectorTitle) if job_record.VectorTitle is not None else None
 
     # Đảm bảo Job đã lên graph
     sync_job_to_graph(db, job_id)

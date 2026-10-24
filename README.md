@@ -282,3 +282,28 @@ Backend trong Compose dùng `bolt://neo4j:7687` qua mạng container.
 Neo4j Browser: <http://localhost:7474>.
 
 Image Docker mặc định cài PyTorch CPU để tránh tải bộ CUDA. Compose gắn `./app` vào `/app/app` ở chế độ chỉ đọc; sau khi sửa source, chạy `docker compose restart web`.
+
+### Đồng bộ và kiểm tra graph
+
+API graph theo CV yêu cầu đăng nhập bằng tài khoản đang hoạt động. Ứng viên chỉ
+được truy cập CV của mình; Admin được truy cập mọi CV. Các API quản trị graph
+yêu cầu quyền Admin/HR theo enum hiện tại.
+
+Sau khi xóa dữ liệu trong PostgreSQL, chạy `POST /api/v1/graph/sync/all` hoặc
+`python -m scripts.migrate_pg_to_neo4j` để dọn CV, JD, JobPosition, User,
+MatchResult và SkillRequirement không còn tương ứng trong graph. Đây là đồng bộ
+theo yêu cầu, chưa có hàng đợi tự động đồng bộ khi dữ liệu thay đổi.
+
+Điểm kinh nghiệm dùng ngày bắt đầu/kết thúc công việc, gộp các khoảng thời gian
+chồng nhau. Điểm học vấn dùng vector học vấn và yêu cầu JD; thiếu vector sẽ trả
+0 thay vì gán điểm mặc định. Cần tạo embedding từ dữ liệu hiện tại để có điểm
+ngữ nghĩa đầy đủ.
+
+Kiểm thử riêng phần graph:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest tests/test_graph_regressions.py -q
+# Thêm kiểm thử trên Neo4j local (tạo và dọn dữ liệu test riêng):
+$env:RUN_NEO4J_REGRESSIONS='1'
+.\venv\Scripts\python.exe -m pytest tests/test_graph_regressions.py -q
+```

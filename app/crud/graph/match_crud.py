@@ -259,14 +259,14 @@ def hybrid_match_cvs_for_job_graph(
 
         OPTIONAL MATCH (c)-[hc:HAS_SKILL]->(s:Skill)<-[rj:REQUIRES_SKILL]-(j)
         WITH c, u, j, vectorScore,
-             collect(DISTINCT {name: s.name, importance: coalesce(rj.importance, 1.0)}) AS matchedSkills,
-             sum(coalesce(rj.importance, 1.0)) AS matchedWeight
+             collect(DISTINCT CASE WHEN s IS NOT NULL THEN {name: s.name, importance: coalesce(rj.importance, 1.0)} END) AS matchedSkills,
+             sum(CASE WHEN s IS NOT NULL THEN coalesce(rj.importance, 1.0) ELSE 0.0 END) AS matchedWeight
 
         OPTIONAL MATCH (j)-[rj2:REQUIRES_SKILL]->(missing:Skill)
         WHERE NOT (c)-[:HAS_SKILL]->(missing)
         WITH c, u, vectorScore, matchedSkills, matchedWeight,
-             collect(DISTINCT {name: missing.name, importance: coalesce(rj2.importance, 1.0)}) AS missingSkills,
-             sum(coalesce(rj2.importance, 1.0)) AS missingWeight
+             collect(DISTINCT CASE WHEN missing IS NOT NULL THEN {name: missing.name, importance: coalesce(rj2.importance, 1.0)} END) AS missingSkills,
+             sum(CASE WHEN missing IS NOT NULL THEN coalesce(rj2.importance, 1.0) ELSE 0.0 END) AS missingWeight
 
         WITH c, u, vectorScore, matchedSkills, missingSkills,
              CASE WHEN (matchedWeight + missingWeight) > 0.0 
@@ -304,14 +304,14 @@ def hybrid_match_cvs_for_job_graph(
 
         OPTIONAL MATCH (c)-[hc:HAS_SKILL]->(s:Skill)<-[rj:REQUIRES_SKILL]-(j)
         WITH c, u, j,
-             collect(DISTINCT {name: s.name, importance: coalesce(rj.importance, 1.0)}) AS matchedSkills,
-             sum(coalesce(rj.importance, 1.0)) AS matchedWeight
+             collect(DISTINCT CASE WHEN s IS NOT NULL THEN {name: s.name, importance: coalesce(rj.importance, 1.0)} END) AS matchedSkills,
+             sum(CASE WHEN s IS NOT NULL THEN coalesce(rj.importance, 1.0) ELSE 0.0 END) AS matchedWeight
 
         OPTIONAL MATCH (j)-[rj2:REQUIRES_SKILL]->(missing:Skill)
         WHERE NOT (c)-[:HAS_SKILL]->(missing)
         WITH c, u, matchedSkills, matchedWeight,
-             collect(DISTINCT {name: missing.name, importance: coalesce(rj2.importance, 1.0)}) AS missingSkills,
-             sum(coalesce(rj2.importance, 1.0)) AS missingWeight
+             collect(DISTINCT CASE WHEN missing IS NOT NULL THEN {name: missing.name, importance: coalesce(rj2.importance, 1.0)} END) AS missingSkills,
+             sum(CASE WHEN missing IS NOT NULL THEN coalesce(rj2.importance, 1.0) ELSE 0.0 END) AS missingWeight
 
         WITH c, u, matchedSkills, missingSkills,
              CASE WHEN (matchedWeight + missingWeight) > 0.0 

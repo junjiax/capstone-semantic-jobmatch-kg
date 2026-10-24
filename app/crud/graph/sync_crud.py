@@ -93,9 +93,7 @@ def upsert_job_position_node(
         j.status = $status,
         j.updatedAt = datetime()
     WITH j
-    FOREACH (_ IN CASE WHEN $embedding IS NOT NULL THEN [1] ELSE [] END |
-        SET j.embedding = $embedding
-    )
+    SET j.embedding = $embedding
     RETURN j.jobId AS jobId
     """
     client = get_neo4j_client()
@@ -206,25 +204,13 @@ def upsert_jd_node(
         j.cleanText = $cleanText,
         j.updatedAt = datetime()
     WITH j
-    // Gán embedding vector nếu có
-    FOREACH (_ IN CASE WHEN $embedding IS NOT NULL THEN [1] ELSE [] END |
-        SET j.embedding = $embedding
-    )
-    FOREACH (_ IN CASE WHEN $vectorDomain IS NOT NULL THEN [1] ELSE [] END |
-        SET j.vectorDomain = $vectorDomain
-    )
-    FOREACH (_ IN CASE WHEN $vectorExpertise IS NOT NULL THEN [1] ELSE [] END |
-        SET j.vectorExpertise = $vectorExpertise
-    )
-    FOREACH (_ IN CASE WHEN $vectorTitle IS NOT NULL THEN [1] ELSE [] END |
-        SET j.vectorTitle = $vectorTitle
-    )
-    FOREACH (_ IN CASE WHEN $vectorQualification IS NOT NULL THEN [1] ELSE [] END |
-        SET j.vectorQualification = $vectorQualification
-    )
-    FOREACH (_ IN CASE WHEN $vectorResponsibility IS NOT NULL THEN [1] ELSE [] END |
-        SET j.vectorResponsibility = $vectorResponsibility
-    )
+    // Replace vectors; null removes stale embeddings.
+    SET j.embedding = $embedding
+    SET j.vectorDomain = $vectorDomain
+    SET j.vectorExpertise = $vectorExpertise
+    SET j.vectorTitle = $vectorTitle
+    SET j.vectorQualification = $vectorQualification
+    SET j.vectorResponsibility = $vectorResponsibility
 
     // Liên kết với JobPosition (đảm bảo tính tương thích hai chiều)
     MERGE (jp:JobPosition {jobId: $jdId})
@@ -232,6 +218,14 @@ def upsert_jd_node(
     MERGE (jp)-[:DEFINED_IN_JD]->(j)
     MERGE (j)-[:FOR_POSITION]->(jp)
 
+    // Replace domain/expertise links so updates cannot leave stale relationships.
+    WITH j
+    OPTIONAL MATCH (j)-[oldDomain:BELONGS_TO_DOMAIN]->()
+    DELETE oldDomain
+    WITH DISTINCT j
+    OPTIONAL MATCH (j)-[oldExpertise:REQUIRES_EXPERTISE]->()
+    DELETE oldExpertise
+    WITH DISTINCT j
     // Liên kết với Domain
     WITH j
     FOREACH (_ IN CASE WHEN $domain IS NOT NULL AND $domain <> '' THEN [1] ELSE [] END |
@@ -290,9 +284,7 @@ def upsert_cv_node(
         c.updatedAt = datetime()
     MERGE (u)-[:OWNS_CV]->(c)
     WITH c
-    FOREACH (_ IN CASE WHEN $embedding IS NOT NULL THEN [1] ELSE [] END |
-        SET c.embedding = $embedding
-    )
+    SET c.embedding = $embedding
     RETURN c.cvId AS cvId
     """
     client = get_neo4j_client()
@@ -329,7 +321,7 @@ def sync_cv_skills_graph(cv_id: int, skills: List[Dict[str, Any]]) -> int:
     // Xóa quan hệ HAS_SKILL cũ trước khi ghi lại danh sách mới
     OPTIONAL MATCH (c)-[old_r:HAS_SKILL]->()
     DELETE old_r
-    WITH c
+    WITH DISTINCT c
     UNWIND $skills AS item
     MERGE (s:Skill {normalizedName: item.normalizedName})
     ON CREATE SET 
@@ -376,20 +368,20 @@ def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -
     query = """
     MERGE (jd:JD {jdId: $jdId})
     MERGE (jp:JobPosition {jobId: $jdId})
-    WITH jd, jp
+    WITH DISTINCT jd, jp
 
     // Xóa các liên kết SkillRequirement cũ của JD
     OPTIONAL MATCH (jd)-[:REQUIRES]->(old_sr:SkillRequirement)
     DETACH DELETE old_sr
-    WITH jd, jp
+    WITH DISTINCT jd, jp
 
     // Xóa các quan hệ REQUIRES_SKILL cũ
     OPTIONAL MATCH (jd)-[old_r1:REQUIRES_SKILL]->()
     DELETE old_r1
-    WITH jd, jp
+    WITH DISTINCT jd, jp
     OPTIONAL MATCH (jp)-[old_r2:REQUIRES_SKILL]->()
     DELETE old_r2
-    WITH jd, jp
+    WITH DISTINCT jd, jp
 
     UNWIND $skills AS req
     // 1. Tạo node Skill chuẩn hóa
@@ -436,3 +428,21 @@ def sync_job_skills_graph(job_id: int, skills: List[Dict[str, Any]]) -> int:
     Ủy quyền cho sync_jd_skill_requirements_graph để đồng bộ cả JD, JobPosition, SkillRequirement và Skill.
     """
     return sync_jd_skill_requirements_graph(jd_id=job_id, skills=skills)
+
+
+def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: List[int]) -> None:
+    """Reconcile deleted relational records after a successful full sync."""
+    client = get_neo4j_client()
+    client.execute_write("""
+        MATCH (m:MatchResult)
+        WHERE NOT m.cvId IN $cvIds OR NOT m.jdId IN $jdIds
+        DETACH DELETE m
+    """, {"cvIds": cv_ids, "jdIds": jd_ids})
+    client.execute_write("""
+        MATCH (sr:SkillRequirement)<-[:REQUIRES]-(j:JD)
+        WHERE NOT j.jdId IN $jdIds
+        DETACH DELETE sr
+    """, {"jdIds": jd_ids})
+    for label, key, ids in (("CV", "cvId", cv_ids), ("JD", "jdId", jd_ids),
+                            ("JobPosition", "jobId", jd_ids), ("User", "userId", user_ids)):
+        client.execute_write(f"MATCH (n:{label}) WHERE NOT n.{key} IN $ids DETACH DELETE n", {"ids": ids})

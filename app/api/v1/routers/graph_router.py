@@ -3,14 +3,28 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_user, require_hr, require_hr_or_admin
+from app.api.deps import get_db, get_current_active_user, require_hr_or_admin
 from app.api.v1.schemas.response import ResponseSchema
-from app.models.User import User
+from app.models.User import User, UserRole
+from app.models.profile import Profile
 from app.services import graph_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def require_cv_access(
+    cv_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    profile = db.query(Profile).filter(Profile.Id == cv_id).first()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="CV không tồn tại")
+    if current_user.Role != UserRole.ADMIN and profile.UserId != current_user.Id:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập CV này")
+    return current_user
 
 
 @router.post(
@@ -54,7 +68,7 @@ async def sync_all_data(
 async def sync_single_cv(
     cv_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_cv_access),
 ):
     success = graph_service.sync_cv_to_graph(db, cv_id)
     if not success:
@@ -110,6 +124,7 @@ async def get_job_skills_from_graph(
 )
 async def get_cv_skills_from_graph(
     cv_id: int,
+    current_user: User = Depends(require_cv_access),
 ):
     from app.crud.graph.match_crud import get_cv_skills_graph
     skills = get_cv_skills_graph(cv_id)
@@ -129,7 +144,7 @@ async def analyze_skill_gap(
     cv_id: int,
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_cv_access),
 ):
     analysis = graph_service.get_skill_gap_analysis_service(db, cv_id, job_id)
     if "error" in analysis:
@@ -169,7 +184,7 @@ async def match_cv_jd(
     cv_id: int,
     jd_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_cv_access),
 ):
     result = graph_service.calculate_cv_jd_matching_service(db, cv_id, jd_id)
     if "error" in result:
@@ -190,7 +205,7 @@ async def get_domain_matrix_gap(
     cv_id: int,
     target_domains: Optional[List[str]] = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_cv_access),
 ):
     matrix_res = graph_service.calculate_domain_skill_gap_matrix_service(db, cv_id, target_domains)
     if "error" in matrix_res:

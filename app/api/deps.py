@@ -58,7 +58,7 @@ def get_current_active_user(
 
     Raise 400 nếu tài khoản bị deactivate.
     """
-    if not current_user.is_active:
+    if not current_user.IsActive:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Tài khoản đã bị vô hiệu hóa.",
@@ -83,7 +83,7 @@ def require_hr(
 
     Raise 403 nếu role != HR.
     """
-    if current_user.role != UserRole.HR:
+    if current_user.Role != UserRole.HR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền thực hiện hành động này. Yêu cầu vai trò HR.",
@@ -100,7 +100,7 @@ def require_applicant(
 
     Raise 403 nếu role != APPLICANT.
     """
-    if current_user.role != UserRole.APPLICANT:
+    if current_user.Role != UserRole.APPLICANT:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Chỉ ứng viên mới có quyền thực hiện hành động này.",
@@ -111,7 +111,7 @@ def require_applicant(
 
 
 def require_admin(current_user: User = Depends(get_current_active_user)) -> User:
-    if current_user.role != UserRole.ADMIN:
+    if current_user.Role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Chỉ ADMIN mới được phép thực hiện hành động này."
@@ -127,7 +127,7 @@ def require_hr_or_admin(
 
     Dùng cho: xem danh sách users, khóa tài khoản, xóa user.
     """
-    if current_user.role not in (UserRole.HR, UserRole.ADMIN):
+    if current_user.Role not in (UserRole.HR, UserRole.ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền. Yêu cầu vai trò HR hoặc Admin.",

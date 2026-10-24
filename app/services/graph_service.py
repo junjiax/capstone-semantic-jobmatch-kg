@@ -64,12 +64,33 @@ def get_domain_expertise_for_title(title: str) -> tuple[str, str]:
     return "Information Technology", "General IT"
 
 
-def _profile_vector(profile):
-    vectors = [list(item.Vector) for group in (profile.skills, profile.work_experiences, profile.educations)
-               for item in group if item.Vector is not None]
+def _mean_vector(vectors):
+    vectors = [list(v) for v in vectors if v is not None]
     if not vectors:
         return None
     return [sum(values) / len(vectors) for values in zip(*vectors)]
+
+
+def _profile_vector(profile):
+    return _mean_vector(item.Vector for group in
+                        (profile.skills, profile.work_experiences, profile.educations) for item in group)
+
+
+def _experience_years(experiences, today=None):
+    """Count calendar days once, including overlapping jobs and ongoing work."""
+    from datetime import date
+    today = today or date.today()
+    intervals = sorted((item.StartDate, min(item.EndDate or today, today))
+                       for item in experiences if item.StartDate and item.StartDate <= today)
+    merged = []
+    for start, end in intervals:
+        if end <= start:
+            continue
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return sum((end - start).days for start, end in merged) / 365.25
 
 
 def _skill_payload(title):
@@ -85,6 +106,9 @@ def sync_cv_to_graph(db: Session, cv_id: int) -> bool:
     profile = db.query(Profile).filter(Profile.Id == cv_id).first()
     if profile is None:
         return False
+    owner = profile.user
+    graph_sync.upsert_user_node(user_id=owner.Id, email=owner.Email,
+        full_name=owner.FullName, role=owner.Role.value)
     graph_sync.upsert_cv_node(cv_id=profile.Id, user_id=profile.UserId,
                               summary=profile.CleanText or profile.RawText or "",
                               embedding=_profile_vector(profile))
@@ -108,7 +132,10 @@ def sync_job_to_graph(db: Session, job_id: int) -> bool:
     graph_sync.upsert_jd_node(jd_id=jd.Id, title=jd.Title, domain=domain, expertise=expertise,
         qualification=jd.Qualification or "", responsibility=jd.Responsibility or "",
         experience_years=jd.Experience or 0, raw_text=jd.RawText or "",
-        clean_text=jd.CleanText or "", embedding=vector)
+        clean_text=jd.CleanText or "", embedding=vector,
+        vector_title=vector, vector_domain=jd.VectorDomain,
+        vector_expertise=jd.VectorExpertise, vector_qualification=jd.VectorQualification,
+        vector_responsibility=jd.VectorResponsibility)
     skills = [dict(_skill_payload(s.Title), requirementId=s.Id,
                    vector=list(s.Vector) if s.Vector is not None else None) for s in jd.skills]
     graph_sync.sync_jd_skill_requirements_graph(job_id, skills)
@@ -119,7 +146,10 @@ def sync_all_from_postgres(db: Session) -> Dict[str, int]:
     """Sync real records without creating sample matching scores."""
     setup_knowledge_graph_schema()
     stats = {"users": 0, "skills": 0, "jobs": 0, "cvs": 0}
-    for user in db.query(User).all():
+    users = db.query(User).all()
+    jobs = db.query(JD).all()
+    profiles = db.query(Profile).all()
+    for user in users:
         graph_sync.upsert_user_node(user_id=user.Id, email=user.Email,
             full_name=user.FullName, role=user.Role.value)
         stats["users"] += 1
@@ -129,10 +159,11 @@ def sync_all_from_postgres(db: Session) -> Dict[str, int]:
         payload = _skill_payload(name)
         graph_sync.upsert_skill_node(skill_id=payload["skillId"], name=name)
         stats["skills"] += 1
-    for jd in db.query(JD).all():
+    for jd in jobs:
         stats["jobs"] += int(sync_job_to_graph(db, jd.Id))
-    for profile in db.query(Profile).all():
+    for profile in profiles:
         stats["cvs"] += int(sync_cv_to_graph(db, profile.Id))
+    graph_sync.prune_deleted_records_graph([p.Id for p in profiles], [j.Id for j in jobs], [u.Id for u in users])
     return stats
 
 
@@ -166,37 +197,17 @@ def calculate_cv_jd_matching_service(
     cv_vec = _profile_vector(cv_record)
 
     # Lấy vector kỹ năng CV
-    cv_skill_vec = None
-    if hasattr(cv_record, "skills") and cv_record.skills:
-        for ps in cv_record.skills:
-            if getattr(ps, "Vector", None) is not None:
-                cv_skill_vec = list(ps.Vector)
-                break
+    cv_skill_vec = _mean_vector(item.Vector for item in cv_record.skills)
 
     # Lấy vector kinh nghiệm CV
-    cv_exp_vec = None
-    if hasattr(cv_record, "work_experiences") and cv_record.work_experiences:
-        for we in cv_record.work_experiences:
-            if getattr(we, "Vector", None) is not None:
-                cv_exp_vec = list(we.Vector)
-                break
+    cv_exp_vec = _mean_vector(item.Vector for item in cv_record.work_experiences)
 
     # Lấy vector học vấn CV
-    cv_edu_vec = None
-    if hasattr(cv_record, "educations") and cv_record.educations:
-        for edu in cv_record.educations:
-            if getattr(edu, "Vector", None) is not None:
-                cv_edu_vec = list(edu.Vector)
-                break
+    cv_edu_vec = _mean_vector(item.Vector for item in cv_record.educations)
 
     # Sub-scores
     # Skill Score: kết hợp độ phủ đồ thị và vector kỹ năng
-    jd_skill_vec = None
-    if hasattr(jd_record, "skills") and jd_record.skills:
-        for js in jd_record.skills:
-            if getattr(js, "Vector", None) is not None:
-                jd_skill_vec = list(js.Vector)
-                break
+    jd_skill_vec = _mean_vector(item.Vector for item in jd_record.skills)
     vec_skill_sim = compute_cosine_similarity(cv_skill_vec or cv_vec, jd_skill_vec)
     skill_score = round(0.60 * graph_coverage + 0.40 * (vec_skill_sim if vec_skill_sim > 0 else graph_coverage), 4)
 
@@ -210,12 +221,12 @@ def calculate_cv_jd_matching_service(
 
     # Experience Score (so sánh kinh nghiệm thực tế)
     jd_min_exp = float(getattr(jd_record, "Experience", 0) or getattr(jd_record, "MinExperience", 0) or 0.0)
-    cand_exp = 2.0  # Mặc định tương đối nếu chưa có tổng năm
+    cand_exp = _experience_years(cv_record.work_experiences)
     experience_score = 1.0 if jd_min_exp == 0 else min(1.0, cand_exp / jd_min_exp)
 
     # Qualification Score
     jd_qual_vec = list(jd_record.VectorQualification) if getattr(jd_record, "VectorQualification", None) is not None else None
-    qualification_score = compute_cosine_similarity(cv_edu_vec or cv_vec, jd_qual_vec)
+    qualification_score = compute_cosine_similarity(cv_edu_vec, jd_qual_vec)
 
     # 3. Trọng số tổng hợp (Weighted Fusion)
     w = weights or {
@@ -287,47 +298,24 @@ def calculate_domain_skill_gap_matrix_service(
     # Đảm bảo CV đã lên graph
     sync_cv_to_graph(db, cv_id)
 
-    # 1. Lấy danh sách Domains từ hệ thống
-    if target_domains and len(target_domains) > 0:
-        domains = target_domains
-    else:
-        # Lấy từ CSDL JD
-        db_domains = db.query(Job.Domain).filter(Job.Domain.isnot(None)).distinct().all()
-        domains = [d[0] for d in db_domains if d[0] and d[0].strip()]
-        if not domains:
-            # Danh sách miền CNTT chuẩn định sẵn nếu DB chưa có
-            domains = [
-                "Backend Development",
-                "Frontend Development",
-                "Data Engineering & AI",
-                "Cloud & DevOps Engineering",
-                "Mobile App Development",
-                "Information Security"
-            ]
+    # Sync JD data before reading the domain graph; no separate batch sync is required.
+    jobs_by_domain = {}
+    for jd in db.query(Job).all():
+        domain = jd.Domain or get_domain_expertise_for_title(jd.Title)[0]
+        jobs_by_domain.setdefault(domain, []).append(jd)
+    domains = list(dict.fromkeys(target_domains)) if target_domains else sorted(jobs_by_domain)
+    for domain in domains:
+        for jd in jobs_by_domain.get(domain, []):
+            sync_job_to_graph(db, jd.Id)
 
     # 2. Lấy dữ liệu Vector của CV
     cv_vec = _profile_vector(cv_record)
 
-    cv_skill_vec = None
-    if hasattr(cv_record, "skills") and cv_record.skills:
-        for ps in cv_record.skills:
-            if getattr(ps, "Vector", None) is not None:
-                cv_skill_vec = list(ps.Vector)
-                break
+    cv_skill_vec = _mean_vector(item.Vector for item in cv_record.skills)
 
-    cv_exp_vec = None
-    if hasattr(cv_record, "work_experiences") and cv_record.work_experiences:
-        for we in cv_record.work_experiences:
-            if getattr(we, "Vector", None) is not None:
-                cv_exp_vec = list(we.Vector)
-                break
+    cv_exp_vec = _mean_vector(item.Vector for item in cv_record.work_experiences)
 
-    cv_edu_vec = None
-    if hasattr(cv_record, "educations") and cv_record.educations:
-        for edu in cv_record.educations:
-            if getattr(edu, "Vector", None) is not None:
-                cv_edu_vec = list(edu.Vector)
-                break
+    cv_edu_vec = _mean_vector(item.Vector for item in cv_record.educations)
 
     # 3. Lấy phân tích Skill Gap đồ thị cho từng Domain
     domain_gaps_list = graph_match.get_domain_skill_gap_matrix_graph(cv_id, domains)
@@ -350,20 +338,17 @@ def calculate_domain_skill_gap_matrix_service(
         graph_ratio = float(gap_info.get("skillCoverageRatio", 0.0))
 
         # Tìm các JD thuộc domain này để lấy vector đại diện
-        jd_in_dom = db.query(Job).filter(Job.Domain == dom).all()
-        dom_vec = None
-        for j in jd_in_dom:
-            if getattr(j, "VectorDomain", None) is not None:
-                dom_vec = list(j.VectorDomain)
-                break
+        jd_in_dom = jobs_by_domain.get(dom, [])
+        dom_vec = _mean_vector(j.VectorDomain for j in jd_in_dom)
+        qual_vec = _mean_vector(j.VectorQualification for j in jd_in_dom)
 
         # Tính toán giá trị từng ô trong cột dom (tất cả đều trong [0, 1])
         # Cell 0 (Hard Skills): kết hợp đồ thị và vector
         skill_cell = round(max(graph_ratio, compute_cosine_similarity(cv_skill_vec or cv_vec, dom_vec)), 4)
         # Cell 1 (Work Experience):
-        exp_cell = round(compute_cosine_similarity(cv_exp_vec or cv_vec, dom_vec), 4)
+        exp_cell = round(compute_cosine_similarity(cv_exp_vec, dom_vec), 4)
         # Cell 2 (Education):
-        edu_cell = round(0.80 if cv_edu_vec else 0.60, 4)
+        edu_cell = compute_cosine_similarity(cv_edu_vec, qual_vec)
         # Cell 3 (Overall Profile):
         profile_cell = round(compute_cosine_similarity(cv_vec, dom_vec), 4)
 
@@ -390,7 +375,9 @@ def calculate_domain_skill_gap_matrix_service(
     for idx, item in enumerate(domain_rankings):
         item["rank"] = idx + 1
         score_pct = item["compatibilityScore"] * 100
-        if item["missingSkillsCount"] > 0:
+        if not item["matchedSkillsCount"] and not item["missingSkillsCount"]:
+            item["careerGuidance"] = "Chưa có dữ liệu yêu cầu kỹ năng để kết luận độ phù hợp."
+        elif item["missingSkillsCount"] > 0:
             item["careerGuidance"] = (
                 f"Độ tương thích {score_pct:.1f}%. Để gia nhập domain này, bạn nên ưu tiên trau dồi các kỹ năng: "
                 f"{', '.join(item['missingSkills'])}."

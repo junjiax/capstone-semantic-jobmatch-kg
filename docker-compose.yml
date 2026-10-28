@@ -36,13 +36,14 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: DockerFile
     container_name: fastapi_app
     init: true
     restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
+      - .:/app
       - ./app:/app/app:ro
       - ./uploads:/app/uploads
       - model_cache:/home/app/.cache/huggingface

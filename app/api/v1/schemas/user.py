@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from app.models.User import UserRole
+from app.models.user import UserRole
 
 
 

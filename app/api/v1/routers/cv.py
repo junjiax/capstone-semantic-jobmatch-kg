@@ -13,29 +13,29 @@ public_router = APIRouter()
 private_router = APIRouter()
 
 # 1. UPLOAD CV
-@private_router.post(
-    "/upload",
-    response_model=ResponseSchema[CVResponse],
-    summary="Upload CV",
-    description="Upload a new CV file (PDF, DOCX) and save metadata."
-)
-async def upload_cv(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Service xử lý lưu file vật lý và tạo record trong DB
-    new_cv = cv_services.upload_and_create_cv(
-        db=db, 
-        file=file, 
-        user_id=current_user.Id
-    )
+# @private_router.post(
+#     "/upload",
+#     response_model=ResponseSchema[CVResponse],
+#     summary="Upload CV",
+#     description="Upload a new CV file (PDF, DOCX) and save metadata."
+# )
+# async def upload_cv(
+#     file: UploadFile = File(...),
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     # Service xử lý lưu file vật lý và tạo record trong DB
+#     new_cv = cv_services.upload_and_create_cv(
+#         db=db, 
+#         file=file, 
+#         user_id=current_user.Id
+#     )
     
-    return ResponseSchema[CVResponse](
-        success=True,
-        message="CV uploaded successfully",
-        data=new_cv
-    )
+#     return ResponseSchema[CVResponse](
+#         success=True,
+#         message="CV uploaded successfully",
+#         data=new_cv
+#     )
 
 # 2. CV (LIST ALL WITH FILTERS)
 @private_router.get(

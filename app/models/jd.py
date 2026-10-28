@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import Vector  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,9 +25,15 @@ class JD(Base):
     Experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     VectorTitle: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
     VectorDomain: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
-    VectorExpertise: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
-    VectorQualification: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
-    VectorResponsibility: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
+    VectorExpertise: Mapped[list[float] | None] = mapped_column(
+        Vector(384), nullable=True
+    )
+    VectorQualification: Mapped[list[float] | None] = mapped_column(
+        Vector(384), nullable=True
+    )
+    VectorResponsibility: Mapped[list[float] | None] = mapped_column(
+        Vector(384), nullable=True
+    )
     CreatedAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

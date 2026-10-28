@@ -3,7 +3,7 @@ import math
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
-from app.models.User import User
+from app.models.user import User
 from app.models.job import Job
 from app.models.cv import CV
 from app.models.jd import JD

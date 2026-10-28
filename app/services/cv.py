@@ -12,8 +12,8 @@ from app.crud import cv as cv_crud
 from app.services import (
     experience as exp_service,
     education as edu_service,
-    skill as skill_service,
-    job_service
+    jd,
+    skill as skill_service
     )
 from app.models.enum import CVFileType, UserRole
 from app.utils import file_handling as file_utils
@@ -158,7 +158,7 @@ def run_cv_parsing_task(db: Session, cv_id: int, current_user: User):
 
     # Kiểm tra position có tồn tại trong hệ thống không
     position_name = parsed.get("position", "")
-    job = job_service.get_job_by_name(db, position_name)
+    job = jd.get_job_by_name(db, position_name)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

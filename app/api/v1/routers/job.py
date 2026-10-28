@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_hr_or_admin
 from app.api.v1.schemas.response import PaginationMeta, ResponseSchema
-from app.models.User import User
-from app.services import job_service
+from app.models.user import User
+from app.services import jd
 from app.core.database import get_db
 from app.models.enum import JobStatus
 from app.api.v1.schemas.job import JobCreate, JobFilter, JobResponse, JobUpdate
@@ -20,7 +20,7 @@ async def get_all_jobs(
     db: Session = Depends(get_db),
 ):
     """Xem danh sách tất cả các job, có thể lọc theo title, requirement text, status."""
-    jobs, total = job_service.get_jobs(db, filters, page, size)
+    jobs, total = jd.get_jobs(db, filters, page, size)
     return ResponseSchema[list[JobResponse]](
         success=True,
         message="Fetched jobs successfully",
@@ -43,7 +43,7 @@ async def get_job_detail(
     db: Session = Depends(get_db),
 ):
     """Xem chi tiết một job theo ID."""
-    job = job_service.get_job_detail(db, job_id)
+    job = jd.get_job_detail(db, job_id)
 
     if not job:
         raise HTTPException(
@@ -76,7 +76,7 @@ async def create_job(
 ):
     """Tạo một job mới với thông tin được cung cấp."""
 
-    new_job = job_service.create_job(db,current_user, job_data)
+    new_job = jd.create_job(db,current_user, job_data)
 
     return ResponseSchema[JobResponse](
         success=True,
@@ -100,7 +100,7 @@ async def update_job(
 ):
     """Cập nhật thông tin của một job (title, description, requirements_text)."""
     
-    updated_job = job_service.update_job(db, current_user, job_id, job_data)
+    updated_job = jd.update_job(db, current_user, job_id, job_data)
 
     if not updated_job:
         raise HTTPException(

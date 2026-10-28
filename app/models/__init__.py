@@ -1,4 +1,4 @@
-from .User import User
+from .user import User
 from .jd import JD
 from .jd_skill import JDSkill
 from .profile import Profile

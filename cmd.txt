@@ -16,3 +16,10 @@ docker compose up --build -d
 
 // Dừng và xóa toàn bộ các container đã tạo bởi file compose:
 docker compose down
+
+// Run fastapi local
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8080
+
+
+// Xem bảng trong postgressql
+$ docker compose exec web python -c "from sqlalchemy import inspect; from app.core.database import engine; print(inspect(engine).get_table_names())"

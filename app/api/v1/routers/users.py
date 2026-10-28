@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.deps import get_current_active_user, require_admin, require_hr
-from app.models.User import User, UserRole
+from app.models.user import User, UserRole
 from app.services import user_service
 from app.api.v1.schemas.user import (
     HRCreate,

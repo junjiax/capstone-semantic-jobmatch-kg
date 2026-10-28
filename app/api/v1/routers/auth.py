@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
-from app.models.User import User
+from app.models.user import User
 from app.services import user_service
 from app.api.v1.schemas.user import (
     ForgotPasswordRequest,

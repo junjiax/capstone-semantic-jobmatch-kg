@@ -13,7 +13,7 @@ from app.core.security import (
 )
 
 from app.crud import user as user_crud
-from app.models.User import User, UserRole
+from app.models.user import User, UserRole
 from app.api.v1.schemas.user import (
     PasswordChange,
     TokenResponse,

@@ -44,12 +44,11 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        host = self.POSTGRES_SERVER_DOCKER or self.POSTGRES_SERVER
         return URL.create(
             drivername="postgresql+psycopg2",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
-            host=host,
+            host=self.POSTGRES_SERVER_DOCKER or self.POSTGRES_SERVER,
             port=self.POSTGRES_PORT,
             database=self.POSTGRES_DB,
         ).render_as_string(hide_password=False)

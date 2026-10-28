@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.User import User, UserRole
+from app.models.user import User, UserRole
 
 # ─── READ ────────────────────────────────────────────────────
 

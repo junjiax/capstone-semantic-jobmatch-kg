@@ -20,6 +20,7 @@ CONSTRAINTS = [
 INDEXES = [
     # 2. Property Indexes
     "CREATE INDEX skill_category_idx IF NOT EXISTS FOR (s:Skill) ON (s.category)",
+    "CREATE INDEX skill_name_idx IF NOT EXISTS FOR (s:Skill) ON (s.name)",
     "CREATE INDEX job_status_idx IF NOT EXISTS FOR (j:JobPosition) ON (j.status)",
     "CREATE INDEX jd_domain_idx IF NOT EXISTS FOR (j:JD) ON (j.domain)",
     "CREATE INDEX jd_expertise_idx IF NOT EXISTS FOR (j:JD) ON (j.expertise)",

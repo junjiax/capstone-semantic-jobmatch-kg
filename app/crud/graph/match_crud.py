@@ -56,35 +56,40 @@ def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
     OPTIONAL MATCH (c)-[hc:HAS_SKILL]->(matched:Skill)
     WHERE (j)-[:REQUIRES_SKILL]->(matched) OR (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(matched)
     OPTIONAL MATCH (j)-[rj:REQUIRES_SKILL]->(matched)
+    OPTIONAL MATCH (j)-[:REQUIRES]->(sr:SkillRequirement)-[:REFERS_TO_SKILL]->(matched)
     WITH c, j,
          [s IN collect(DISTINCT CASE WHEN matched IS NOT NULL THEN {
              skillId: matched.skillId,
              name: matched.name,
              category: matched.category,
-             importance: coalesce(rj.importance, 1.0),
+             importance: coalesce(rj.importance, sr.importance, 1.0),
              confidence: coalesce(hc.confidence, 1.0)
-         } END) WHERE s IS NOT NULL] AS matchedSkills,
-         sum(CASE WHEN matched IS NOT NULL THEN coalesce(rj.importance, 1.0) ELSE 0.0 END) AS matchedWeight
+         } END) WHERE s IS NOT NULL] AS matchedSkills
 
     // 2. Missing Skills: Job/JD yêu cầu nhưng CV KHÔNG có
     OPTIONAL MATCH (missing:Skill)
     WHERE ((j)-[:REQUIRES_SKILL]->(missing) OR (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(missing))
       AND NOT (c)-[:HAS_SKILL]->(missing)
     OPTIONAL MATCH (j)-[rj2:REQUIRES_SKILL]->(missing)
-    WITH c, j, matchedSkills, matchedWeight,
+    OPTIONAL MATCH (j)-[:REQUIRES]->(sr2:SkillRequirement)-[:REFERS_TO_SKILL]->(missing)
+    WITH c, j, matchedSkills,
          [s IN collect(DISTINCT CASE WHEN missing IS NOT NULL THEN {
              skillId: missing.skillId,
              name: missing.name,
              category: missing.category,
-             importance: coalesce(rj2.importance, 1.0),
-             minYears: coalesce(rj2.minYears, 0.0)
-         } END) WHERE s IS NOT NULL] AS missingSkills,
-         sum(CASE WHEN missing IS NOT NULL THEN coalesce(rj2.importance, 1.0) ELSE 0.0 END) AS missingWeight
+             importance: coalesce(rj2.importance, sr2.importance, 1.0),
+             minYears: coalesce(rj2.minYears, sr2.minYears, 0.0)
+         } END) WHERE s IS NOT NULL] AS missingSkills
+
+    // Tính trọng số an toàn bằng reduce, tránh tính trùng từ Cartesian product
+    WITH c, j, matchedSkills, missingSkills,
+         reduce(acc = 0.0, s IN matchedSkills | acc + s.importance) AS matchedWeight,
+         reduce(acc = 0.0, s IN missingSkills | acc + s.importance) AS missingWeight
 
     // 3. Extra Skills: CV có nhưng Job/JD KHÔNG yêu cầu
     OPTIONAL MATCH (c)-[hc2:HAS_SKILL]->(extra:Skill)
     WHERE NOT (j)-[:REQUIRES_SKILL]->(extra) AND NOT (j)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(extra)
-    WITH matchedSkills, matchedWeight, missingSkills, missingWeight,
+    WITH matchedSkills, missingSkills, matchedWeight, missingWeight,
          [s IN collect(DISTINCT CASE WHEN extra IS NOT NULL THEN {
              skillId: extra.skillId,
              name: extra.name,
@@ -107,8 +112,8 @@ def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
         matchedSkills: matchedSkills,
         missingSkills: missingSkills,
         extraSkills: extraSkills,
-        matchedWeight: matchedWeight,
-        totalRequiredWeight: totalRequiredWeight,
+        matchedWeight: round(matchedWeight, 4),
+        totalRequiredWeight: round(totalRequiredWeight, 4),
         skillCoverageRatio: CASE WHEN totalRequiredWeight > 0.0
                                  THEN round(matchedWeight / totalRequiredWeight, 4)
                                  ELSE 0.0 END
@@ -189,18 +194,21 @@ def save_cv_jd_match_result_graph(cv_id: int, jd_id: int, scores: Dict[str, Any]
 def get_domain_skill_gap_matrix_graph(cv_id: int, target_domains: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
     Truy vấn phân tích Skill Gap cho CV đối với từng Domain trong CNTT (Bài toán 2: 1 CV vs Many JDs/Domains).
-    Trả về tỷ lệ bao phủ kỹ năng, danh sách kỹ năng khớp và kỹ năng còn thiếu của từng domain.
+    Tập hợp tất cả các kỹ năng yêu cầu qua nhiều JD thuộc cùng Domain hoặc qua Expertise thuộc Domain.
+    Đảm bảo loại bỏ trùng lặp kỹ năng và trả về tỷ lệ bao phủ trong [0, 1].
     """
     query = """
     MATCH (c:CV {cvId: $cvId})
     MATCH (d:Domain)
     WHERE $targetDomains IS NULL OR size($targetDomains) = 0 OR d.name IN $targetDomains
 
-    // Tìm tất cả các kỹ năng được yêu cầu bởi các JD thuộc Domain này
+    // Tìm tất cả các kỹ năng được yêu cầu bởi các JD thuộc Domain này hoặc qua Expertise thuộc Domain
     OPTIONAL MATCH (jd:JD)-[:BELONGS_TO_DOMAIN]->(d)
     OPTIONAL MATCH (jd)-[:REQUIRES_SKILL]->(s1:Skill)
     OPTIONAL MATCH (jd)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(s2:Skill)
-    WITH c, d, [s IN (collect(DISTINCT s1) + collect(DISTINCT s2)) WHERE s IS NOT NULL] AS rawSkills
+    OPTIONAL MATCH (e:Expertise)-[:UNDER_DOMAIN]->(d)
+    OPTIONAL MATCH (s3:Skill)-[:BELONGS_TO_EXPERTISE]->(e)
+    WITH c, d, [s IN (collect(DISTINCT s1) + collect(DISTINCT s2) + collect(DISTINCT s3)) WHERE s IS NOT NULL] AS rawSkills
     UNWIND (CASE WHEN size(rawSkills) = 0 THEN [null] ELSE rawSkills END) AS rawS
     WITH c, d, [s IN collect(DISTINCT rawS) WHERE s IS NOT NULL] AS domainSkills
 
@@ -234,6 +242,61 @@ def get_domain_skill_gap_matrix_graph(cv_id: int, target_domains: Optional[List[
         "targetDomains": target_domains or []
     })
     return [record["domainGap"] for record in res if "domainGap" in record]
+
+
+def get_expertise_skill_gap_matrix_graph(cv_id: int, target_expertises: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """
+    Truy vấn phân tích Skill Gap cho CV đối với từng Expertise (Chuyên môn sâu).
+    Tập hợp tất cả các kỹ năng yêu cầu qua nhiều JD thuộc cùng Expertise (hoặc gắn trực tiếp với Expertise).
+    Đảm bảo loại bỏ trùng lặp kỹ năng và trả về tỷ lệ bao phủ trong [0, 1].
+    """
+    query = """
+    MATCH (c:CV {cvId: $cvId})
+    MATCH (e:Expertise)
+    WHERE $targetExpertises IS NULL OR size($targetExpertises) = 0 OR e.name IN $targetExpertises
+
+    OPTIONAL MATCH (e)-[:UNDER_DOMAIN]->(d:Domain)
+    OPTIONAL MATCH (jd:JD)-[:REQUIRES_EXPERTISE]->(e)
+    OPTIONAL MATCH (jd)-[:REQUIRES_SKILL]->(s1:Skill)
+    OPTIONAL MATCH (jd)-[:REQUIRES]->(:SkillRequirement)-[:REFERS_TO_SKILL]->(s2:Skill)
+    OPTIONAL MATCH (s3:Skill)-[:BELONGS_TO_EXPERTISE]->(e)
+
+    WITH c, e, d, [s IN (collect(DISTINCT s1) + collect(DISTINCT s2) + collect(DISTINCT s3)) WHERE s IS NOT NULL] AS rawSkills
+    UNWIND (CASE WHEN size(rawSkills) = 0 THEN [null] ELSE rawSkills END) AS rawS
+    WITH c, e, d, [s IN collect(DISTINCT rawS) WHERE s IS NOT NULL] AS expSkills
+
+    OPTIONAL MATCH (c)-[:HAS_SKILL]->(cvSkill:Skill)
+    WITH c, e, d, expSkills, collect(DISTINCT cvSkill) AS cvSkills
+
+    WITH e.name AS expertiseName,
+         coalesce(d.name, "") AS domainName,
+         [s IN expSkills WHERE s IN cvSkills | {skillId: s.skillId, name: s.name, category: s.category}] AS matchedSkills,
+         [s IN expSkills WHERE NOT s IN cvSkills AND s IS NOT NULL | {skillId: s.skillId, name: s.name, category: s.category}] AS missingSkills,
+         size(expSkills) AS totalExpertiseSkills
+
+    WITH expertiseName, domainName, matchedSkills, missingSkills, totalExpertiseSkills,
+         CASE WHEN totalExpertiseSkills > 0 
+              THEN round(toFloat(size(matchedSkills)) / toFloat(totalExpertiseSkills), 4)
+              ELSE 0.0 END AS skillCoverageRatio
+    RETURN {
+        expertiseName: expertiseName,
+        domainName: domainName,
+        totalExpertiseSkills: totalExpertiseSkills,
+        totalMatchedSkills: size(matchedSkills),
+        totalMissingSkills: size(missingSkills),
+        matchedSkills: matchedSkills,
+        missingSkills: missingSkills,
+        skillCoverageRatio: skillCoverageRatio
+    } AS expertiseGap
+    ORDER BY skillCoverageRatio DESC, expertiseName ASC
+    """
+    client = get_neo4j_client()
+    res = client.execute_read(query, {
+        "cvId": cv_id,
+        "targetExpertises": target_expertises or []
+    })
+    return [record["expertiseGap"] for record in res if "expertiseGap" in record]
+
 
 
 def hybrid_match_cvs_for_job_graph(

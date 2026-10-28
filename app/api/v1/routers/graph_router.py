@@ -183,21 +183,25 @@ async def match_cv_jd(
 
 @router.get(
     "/matrix/domain-gap/{cv_id}",
-    summary="BÀI TOÁN 2: Ma trận tương quan Domain & Skill Gap (1 CV vs Many Domains)",
-    description="Trả lời câu hỏi: CV của tôi có thể apply vào những domain nào trong CNTT? Trả về ma trận N * K với các giá trị trong [0, 1], xếp hạng Domain và gợi ý bù đắp khoảng cách kỹ năng.",
+    summary="BÀI TOÁN 2: Ma trận tương quan Domain & Skill Gap (1 CV vs Many Domains/Expertises)",
+    description="Trả lời câu hỏi: CV của tôi có thể apply vào những domain/expertise nào trong CNTT? Trả về ma trận N * K với các giá trị trong [0, 1], xếp hạng Domain, Expertise và gợi ý bù đắp khoảng cách kỹ năng.",
 )
 async def get_domain_matrix_gap(
     cv_id: int,
     target_domains: Optional[List[str]] = Query(default=None),
+    target_expertises: Optional[List[str]] = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    matrix_res = graph_service.calculate_domain_skill_gap_matrix_service(db, cv_id, target_domains)
+    matrix_res = graph_service.calculate_domain_skill_gap_matrix_service(
+        db, cv_id, target_domains=target_domains, target_expertises=target_expertises
+    )
     if "error" in matrix_res:
         raise HTTPException(status_code=404, detail=matrix_res["error"])
     return ResponseSchema(
         success=True,
-        message=f"Domain correlation matrix generated for CV {cv_id}",
+        message=f"Domain and expertise correlation matrix generated for CV {cv_id}",
         data=matrix_res
     )
+
 

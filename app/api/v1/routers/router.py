@@ -2,7 +2,6 @@ from fastapi import APIRouter
 from app.api.v1.routers import (
     applicant,
     cv,
-    data,
     education,
     experience,
     health,
@@ -26,9 +25,6 @@ api_router.include_router(
 api_router.include_router(health.router, prefix="/health", tags=["Health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
-# api_router.include_router(
-#     embedding.router, prefix="/embedding_model", tags=["Embedding Model"]
-# )
 api_router.include_router(
     graph_router.router, prefix="/graph", tags=["Knowledge Graph"]
 )
@@ -51,7 +47,6 @@ private_router.include_router(education.router, prefix="/education", tags=["Educ
 private_router.include_router(
     experience.router, prefix="/experience", tags=["Experience"]
 )
-private_router.include_router(data.router, prefix="/jd/data", tags=["JD Data Crawling"])
 private_router.include_router(
     application.router, prefix="/applications", tags=["Applications Tracking"]
 )

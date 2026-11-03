@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.clients.neo4j_client import neo4j_client
 from app.crud.graph.schema import init_graph_schema
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Kết nối và kiểm tra schema Neo4j
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
     # Shutdown: Đóng driver Neo4j
     neo4j_client.close()
 
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -28,17 +30,16 @@ def create_app() -> FastAPI:
     )
     app.include_router(router=api_router, prefix="/api/v1")
 
+    # ── CORS Middleware ───────────────────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     return app
 
 
 app = create_app()
-
-
-# ── CORS Middleware ───────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)

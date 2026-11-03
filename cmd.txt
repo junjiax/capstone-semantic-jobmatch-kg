@@ -31,4 +31,4 @@ py -m app.data.JDs.extraction.crawler
 // local
 py -m app.data.JDs.loading.main
 // docker
-docker compose exec web py -m app.data.JDs.loading.main
+docker compose exec web python -m app.data.JDs.loading.main

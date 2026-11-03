@@ -39,7 +39,8 @@ def main() -> None:
             "Domain": obj_cleaned_text.get("Domain", ""),
             "Expertise": obj_cleaned_text.get("Expertise", ""),
             "Responsibilities": obj_cleaned_text.get("Responsibilities", ""),
-            "Qualification": obj_cleaned_text.get("Qualification", 0),
+            "Qualification": obj_cleaned_text.get("Qualification", ""),
+            "Experience": obj_cleaned_text.get("Experience", 0),
         }
 
         list_of_cleaned_objs.append(cleaned_obj)

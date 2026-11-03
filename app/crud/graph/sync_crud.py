@@ -31,7 +31,13 @@ def upsert_user_node(user_id: int, email: str, full_name: str, role: str) -> Dic
     return res[0] if res else {}
 
 
-def upsert_skill_node(skill_id: int, name: str, category: Optional[str] = None, description: Optional[str] = None) -> Dict[str, Any]:
+def upsert_skill_node(
+    skill_id: int,
+    name: str,
+    category: Optional[str] = None,
+    description: Optional[str] = None,
+    expertise_name: Optional[str] = None,
+) -> Dict[str, Any]:
     normalized = normalize_skill_name(name)
     query = """
     MERGE (s:Skill {normalizedName: $normalizedName})
@@ -47,6 +53,11 @@ def upsert_skill_node(skill_id: int, name: str, category: Optional[str] = None, 
         s.category = coalesce($category, s.category),
         s.description = coalesce($description, s.description),
         s.updatedAt = datetime()
+    WITH s
+    FOREACH (_ IN CASE WHEN $expertiseName IS NOT NULL AND $expertiseName <> '' THEN [1] ELSE [] END |
+        MERGE (e:Expertise {name: $expertiseName})
+        MERGE (s)-[:BELONGS_TO_EXPERTISE]->(e)
+    )
     RETURN s.skillId AS skillId, s.name AS name, s.normalizedName AS normalizedName
     """
     client = get_neo4j_client()
@@ -55,9 +66,52 @@ def upsert_skill_node(skill_id: int, name: str, category: Optional[str] = None, 
         "name": name.strip(),
         "normalizedName": normalized,
         "category": category or "",
-        "description": description or ""
+        "description": description or "",
+        "expertiseName": expertise_name.strip() if expertise_name else None
     })
     return res[0] if res else {}
+
+
+def link_skill_to_expertise(skill_name: str, expertise_name: str) -> bool:
+    """Tạo quan hệ (s:Skill)-[:BELONGS_TO_EXPERTISE]->(e:Expertise) an toàn, idempotent."""
+    if not skill_name or not expertise_name:
+        return False
+    query = """
+    MERGE (s:Skill {normalizedName: $normalizedSkill})
+    ON CREATE SET s.name = $skillName, s.createdAt = datetime()
+    MERGE (e:Expertise {name: $expertiseName})
+    ON CREATE SET e.normalizedName = toLower($expertiseName), e.createdAt = datetime()
+    MERGE (s)-[:BELONGS_TO_EXPERTISE]->(e)
+    RETURN count(*) AS cnt
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "skillName": skill_name.strip(),
+        "normalizedSkill": normalize_skill_name(skill_name),
+        "expertiseName": expertise_name.strip()
+    })
+    return bool(res and res[0].get("cnt", 0) > 0)
+
+
+def link_expertise_to_domain(expertise_name: str, domain_name: str) -> bool:
+    """Tạo quan hệ (e:Expertise)-[:UNDER_DOMAIN]->(d:Domain) an toàn, idempotent."""
+    if not expertise_name or not domain_name:
+        return False
+    query = """
+    MERGE (e:Expertise {name: $expertiseName})
+    ON CREATE SET e.normalizedName = toLower($expertiseName), e.createdAt = datetime()
+    MERGE (d:Domain {name: $domainName})
+    ON CREATE SET d.normalizedName = toLower($domainName), d.createdAt = datetime()
+    MERGE (e)-[:UNDER_DOMAIN]->(d)
+    RETURN count(*) AS cnt
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "expertiseName": expertise_name.strip(),
+        "domainName": domain_name.strip()
+    })
+    return bool(res and res[0].get("cnt", 0) > 0)
+
 
 
 def upsert_job_position_node(
@@ -342,12 +396,17 @@ def sync_cv_skills_graph(cv_id: int, skills: List[Dict[str, Any]]) -> int:
     return res[0]["syncedCount"] if res else 0
 
 
-def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -> int:
+def sync_jd_skill_requirements_graph(
+    jd_id: int,
+    skills: List[Dict[str, Any]],
+    expertise_name: Optional[str] = None
+) -> int:
     """
     Đồng bộ danh sách yêu cầu kỹ năng của JD lên Neo4j:
     - Tạo các node (:SkillRequirement) gắn với (:JD) qua [:REQUIRES]
     - Ánh xạ (:SkillRequirement) sang (:Skill) qua [:REFERS_TO_SKILL]
     - Đồng thời duy trì [:REQUIRES_SKILL] trực tiếp từ (:JD) và (:JobPosition) tới (:Skill) để tương thích ngược.
+    - Liên kết (:Skill)-[:BELONGS_TO_EXPERTISE]->(:Expertise) nếu có expertise.
     """
     clean_skills = []
     for idx, item in enumerate(skills):
@@ -355,6 +414,7 @@ def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -
         if not s_name:
             continue
         req_id = item.get("requirementId") or item.get("id") or int(f"{jd_id}{idx:03d}")
+        exp_for_skill = item.get("expertise") or expertise_name
         clean_skills.append({
             "requirementId": req_id,
             "skillId": item.get("skillId"),
@@ -362,7 +422,8 @@ def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -
             "normalizedName": normalize_skill_name(s_name),
             "importance": float(item.get("importance", 1.0) or 1.0),
             "minYears": float(item.get("minYears", 0.0) or 0.0),
-            "vector": item.get("vector")
+            "vector": item.get("vector"),
+            "expertise": exp_for_skill.strip() if exp_for_skill else None
         })
 
     query = """
@@ -412,6 +473,13 @@ def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -
     MERGE (jp)-[r2:REQUIRES_SKILL]->(s)
     SET r2.importance = req.importance, r2.minYears = req.minYears
 
+    // 5. Liên kết Skill -> Expertise nếu có
+    WITH jd, jp, s, sr, req
+    FOREACH (_ IN CASE WHEN req.expertise IS NOT NULL AND req.expertise <> '' THEN [1] ELSE [] END |
+        MERGE (e:Expertise {name: req.expertise})
+        MERGE (s)-[:BELONGS_TO_EXPERTISE]->(e)
+    )
+
     RETURN count(sr) AS syncedCount
     """
     client = get_neo4j_client()
@@ -422,12 +490,16 @@ def sync_jd_skill_requirements_graph(jd_id: int, skills: List[Dict[str, Any]]) -
     return res[0]["syncedCount"] if res else 0
 
 
-def sync_job_skills_graph(job_id: int, skills: List[Dict[str, Any]]) -> int:
+def sync_job_skills_graph(
+    job_id: int,
+    skills: List[Dict[str, Any]],
+    expertise_name: Optional[str] = None
+) -> int:
     """
     Đồng bộ danh sách kỹ năng yêu cầu của JobPosition/JD lên Neo4j theo lô (UNWIND).
     Ủy quyền cho sync_jd_skill_requirements_graph để đồng bộ cả JD, JobPosition, SkillRequirement và Skill.
     """
-    return sync_jd_skill_requirements_graph(jd_id=job_id, skills=skills)
+    return sync_jd_skill_requirements_graph(jd_id=job_id, skills=skills, expertise_name=expertise_name)
 
 
 def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: List[int]) -> None:
@@ -446,3 +518,4 @@ def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: 
     for label, key, ids in (("CV", "cvId", cv_ids), ("JD", "jdId", jd_ids),
                             ("JobPosition", "jobId", jd_ids), ("User", "userId", user_ids)):
         client.execute_write(f"MATCH (n:{label}) WHERE NOT n.{key} IN $ids DETACH DELETE n", {"ids": ids})
+

@@ -1,4 +1,5 @@
-// Run app
+CMD FOR SEARCHING
+
 // Redirect to work dir
 cd fastapi
 
@@ -20,9 +21,14 @@ docker compose down
 // Run fastapi local
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8080
 
-
 // Xem bảng trong postgressql
 docker compose exec web python -c "from sqlalchemy import inspect; from app.core.database import engine; print(inspect(engine).get_table_names())"
 
 // Thu thập JD từ trình duyệt web
-python app/crawler/crawler.py
+py -m app.data.JDs.extraction.crawler
+
+// Tải dữ liệu lên database
+// local
+py -m app.data.JDs.loading.main
+// docker
+docker compose exec web py -m app.data.JDs.loading.main

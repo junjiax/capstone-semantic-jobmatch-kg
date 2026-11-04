@@ -77,7 +77,7 @@ def run_migrations_online() -> None:
                 "SELECT current_database()"
             ).scalar_one()
 
-        print(f"Database Alembic đang kết nối: {database_name}")
+        print(f"Alembic connected database: {database_name}")
 
         context.configure(connection=connection, target_metadata=target_metadata)
 

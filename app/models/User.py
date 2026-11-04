@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 
 def _user_role_values(role_enum: type[UserRole]) -> list[str]:
     return [
-        role.value
-        for name, role in role_enum.__members__.items()
-        if name == role.name
+        role.value for name, role in role_enum.__members__.items() if name == role.name
     ]
 
 

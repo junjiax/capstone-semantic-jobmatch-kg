@@ -30,8 +30,6 @@ class BatchStatus(enum.Enum):
 class UserRole(str , enum.Enum):
     CANDIDATE = "candidate"
     ADMIN = "admin"
-    APPLICANT = "candidate"
-    HR = "admin"
 
 class UserStatus(str, enum.Enum):
     ACTIVE   = "active"

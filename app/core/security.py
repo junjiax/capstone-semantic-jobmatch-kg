@@ -1,7 +1,7 @@
 import hashlib
 import bcrypt
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Union
+from typing import Any, Optional, Dict
 from jose import JWTError, jwt
 
 from app.core.config import get_settings
@@ -36,11 +36,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # --- CORE TOKEN LOGIC ---
 
-def _create_token_base(subject: Any, expires_delta: int, token_type: str, extra: dict = {}) -> str:
+def _create_token_base(subject: Any, expires_delta: int, token_type: str, extra: Dict[str, Any] = {}) -> str:
     """Hàm nội bộ tạo JWT với cấu trúc thống nhất."""
     now = datetime.now(timezone.utc)
     expire = now + timedelta(seconds=expires_delta)
-    payload = {
+    payload: Dict[str, Any] = {
         "sub": str(subject),
         "exp": expire,
         "iat": now,
@@ -76,7 +76,7 @@ def create_reset_token(email: str) -> str:
 
 # --- DECODE/VERIFY  ---
 
-def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[dict]:
+def decode_token(token: str, expected_type: Optional[str] = None) -> Dict[str, Any] | None:
     """Hàm giải mã token chính yếu."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -86,6 +86,6 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> Optional[di
     except JWTError:
         return None
 
-def verify_token(token: str, expected_type: str = TokenType.ACCESS) -> Optional[dict]:
+def verify_token(token: str, expected_type: str = TokenType.ACCESS) -> Dict[str, Any] | None:
     """Alias của decode_token để tránh lỗi ở các file gọi tên hàm này."""
     return decode_token(token, expected_type)

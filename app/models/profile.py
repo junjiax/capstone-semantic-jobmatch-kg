@@ -8,7 +8,7 @@ from app.core.database import Base
 from app.models.enum import ProfileFileType
 
 if TYPE_CHECKING:
-    from app.models.User import User
+    from app.models.user import User
     from app.models.profile_edu import ProfileEdu
     from app.models.profile_skill import ProfileSkill
     from app.models.profile_work_exp import ProfileWorkExp

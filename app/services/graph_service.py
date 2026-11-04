@@ -145,6 +145,47 @@ def sync_cv_to_graph(db: Session, cv_id: int) -> bool:
             if s.SkillTitle and s.SkillTitle.strip():
                 cv_skills.append(_skill_payload(s.SkillTitle))
     graph_sync.sync_cv_skills_graph(cv_id, cv_skills)
+
+    # Đồng bộ Học vấn (PROFILE_EDU)
+    cv_educations = []
+    if profile.educations:
+        for idx, edu in enumerate(profile.educations):
+            edu_id = getattr(edu, "Id", None) or int(f"{cv_id}1{idx:02d}")
+            level_str = ""
+            if getattr(edu, "Level", None):
+                level_str = edu.Level.value if hasattr(edu.Level, "value") else str(edu.Level)
+            cv_educations.append({
+                "educationId": edu_id,
+                "school": getattr(edu, "School", None) or "",
+                "major": getattr(edu, "Major", None) or "",
+                "degree": getattr(edu, "Degree", None) or "",
+                "level": level_str,
+                "graduationYear": getattr(edu, "GraduationYear", None),
+                "gpa": float(edu.GPA) if getattr(edu, "GPA", None) is not None else None,
+            })
+    graph_sync.sync_cv_educations_graph(cv_id, cv_educations)
+
+    # Đồng bộ Kinh nghiệm làm việc (PROFILE_WORK_EXP)
+    cv_experiences = []
+    if profile.work_experiences:
+        from datetime import date
+        today = date.today()
+        for idx, exp in enumerate(profile.work_experiences):
+            exp_id = getattr(exp, "Id", None) or int(f"{cv_id}2{idx:02d}")
+            start = getattr(exp, "StartDate", None)
+            end = getattr(exp, "EndDate", None) or today
+            years = 0.0
+            if start and end and end >= start:
+                years = round((end - start).days / 365.25, 2)
+            cv_experiences.append({
+                "experienceId": exp_id,
+                "domain": getattr(exp, "Domain", None) or "",
+                "expertise": getattr(exp, "Expertise", None) or "",
+                "responsibility": getattr(exp, "Responsibility", None) or "",
+                "years": years,
+            })
+    graph_sync.sync_cv_work_experiences_graph(cv_id, cv_experiences)
+
     return True
 
 
@@ -156,7 +197,13 @@ def sync_job_to_graph(db: Session, job_id: int) -> bool:
     domain = jd.Domain.strip() if jd.Domain and jd.Domain.strip() else None
     expertise = jd.Expertise.strip() if jd.Expertise and jd.Expertise.strip() else None
 
-    # Chỉ upsert Domain & Expertise khi có dữ liệu thực tế trong DB
+    # Tự động suy luận Domain & Expertise từ chức danh nếu chưa có trong DB
+    if not domain or not expertise:
+        fb_domain, fb_expertise = get_domain_expertise_for_title(jd.Title or "")
+        domain = domain or fb_domain
+        expertise = expertise or fb_expertise
+
+    # Upsert Domain & Expertise
     if domain:
         graph_sync.upsert_domain_node(name=domain)
     if expertise:
@@ -223,6 +270,8 @@ def sync_all_from_postgres(db: Session) -> Dict[str, int]:
         "cvs": 0,
         "domains": 0,
         "expertises": 0,
+        "educations": 0,
+        "work_experiences": 0,
     }
     users = db.query(User).all()
     jobs = db.query(JD).all()
@@ -273,6 +322,8 @@ def sync_all_from_postgres(db: Session) -> Dict[str, int]:
         stats["jobs"] += int(sync_job_to_graph(db, jd.Id))
     for profile in profiles:
         stats["cvs"] += int(sync_cv_to_graph(db, profile.Id))
+        stats["educations"] += len(profile.educations) if profile.educations else 0
+        stats["work_experiences"] += len(profile.work_experiences) if profile.work_experiences else 0
     graph_sync.prune_deleted_records_graph(
         [p.Id for p in profiles], [j.Id for j in jobs], [u.Id for u in users]
     )

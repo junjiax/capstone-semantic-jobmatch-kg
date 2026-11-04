@@ -294,6 +294,21 @@ def upsert_jd_node(
         MERGE (j)-[:REQUIRES_EXPERTISE]->(e)
     )
 
+    // Liên kết với EducationLevel nếu có qualification
+    WITH j
+    OPTIONAL MATCH (j)-[oldEduLevel:REQUIRES_EDUCATION_LEVEL]->()
+    DELETE oldEduLevel
+    WITH DISTINCT j
+    OPTIONAL MATCH (jp:JobPosition {jobId: j.jdId})-[oldJpEduLevel:REQUIRES_EDUCATION_LEVEL]->()
+    DELETE oldJpEduLevel
+    WITH DISTINCT j
+    OPTIONAL MATCH (jp:JobPosition {jobId: j.jdId})
+    FOREACH (_ IN CASE WHEN $qualification IS NOT NULL AND $qualification <> '' THEN [1] ELSE [] END |
+        MERGE (el:EducationLevel {name: toUpper($qualification)})
+        MERGE (j)-[:REQUIRES_EDUCATION_LEVEL]->(el)
+        MERGE (jp)-[:REQUIRES_EDUCATION_LEVEL]->(el)
+    )
+
     RETURN j.jdId AS jdId
     """
     client = get_neo4j_client()
@@ -502,6 +517,130 @@ def sync_job_skills_graph(
     return sync_jd_skill_requirements_graph(jd_id=job_id, skills=skills, expertise_name=expertise_name)
 
 
+
+
+def sync_cv_educations_graph(cv_id: int, educations: List[Dict[str, Any]]) -> int:
+    """
+    Đồng bộ danh sách học vấn/bằng cấp của CV lên Neo4j:
+    - Tạo các node (:Education) gắn với (:CV) qua [:HAS_EDUCATION]
+    - Chuẩn hóa và liên kết tới (:EducationLevel) qua [:OF_LEVEL]
+    - Đồng thời tạo quan hệ tắt trực tiếp (:CV)-[:HAS_EDUCATION_LEVEL]->(:EducationLevel)
+    """
+    clean_edus = []
+    for idx, item in enumerate(educations):
+        edu_id = item.get("educationId") or item.get("id") or int(f"{cv_id}1{idx:02d}")
+        level = item.get("level") or ""
+        clean_edus.append({
+            "educationId": edu_id,
+            "school": (item.get("school") or "").strip(),
+            "major": (item.get("major") or "").strip(),
+            "degree": (item.get("degree") or "").strip(),
+            "level": str(level).strip().upper() if level else "",
+            "graduationYear": int(item.get("graduationYear")) if item.get("graduationYear") else None,
+            "gpa": float(item.get("gpa")) if item.get("gpa") is not None else None,
+        })
+
+    query = """
+    MATCH (c:CV {cvId: $cvId})
+    OPTIONAL MATCH (c)-[:HAS_EDUCATION]->(old_e:Education)
+    DETACH DELETE old_e
+    WITH c
+    OPTIONAL MATCH (c)-[old_rel:HAS_EDUCATION_LEVEL]->()
+    DELETE old_rel
+    WITH c
+    UNWIND $educations AS edu
+    MERGE (e:Education {educationId: edu.educationId})
+    SET e.school = edu.school,
+        e.major = edu.major,
+        e.degree = edu.degree,
+        e.level = edu.level,
+        e.graduationYear = edu.graduationYear,
+        e.gpa = edu.gpa,
+        e.updatedAt = datetime()
+    MERGE (c)-[:HAS_EDUCATION]->(e)
+    WITH c, e, edu
+    FOREACH (_ IN CASE WHEN edu.level IS NOT NULL AND edu.level <> '' THEN [1] ELSE [] END |
+        MERGE (el:EducationLevel {name: edu.level})
+        MERGE (e)-[:OF_LEVEL]->(el)
+        MERGE (c)-[:HAS_EDUCATION_LEVEL]->(el)
+    )
+    RETURN count(e) AS syncedCount
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "cvId": cv_id,
+        "educations": clean_edus
+    })
+    return res[0]["syncedCount"] if res else 0
+
+
+def sync_cv_work_experiences_graph(cv_id: int, experiences: List[Dict[str, Any]]) -> int:
+    """
+    Đồng bộ danh sách kinh nghiệm làm việc của CV lên Neo4j:
+    - Tạo các node (:WorkExperience) gắn với (:CV) qua [:HAS_EXPERIENCE]
+    - Liên kết (:WorkExperience)-[:IN_DOMAIN]->(:Domain) và (:WorkExperience)-[:IN_EXPERTISE]->(:Expertise)
+    - Tạo đường tắt trực tiếp (:CV)-[:WORKED_IN_DOMAIN]->(:Domain) và (:CV)-[:WORKED_IN_EXPERTISE]->(:Expertise)
+    """
+    clean_exps = []
+    for idx, item in enumerate(experiences):
+        exp_id = item.get("experienceId") or item.get("id") or int(f"{cv_id}2{idx:02d}")
+        domain = (item.get("domain") or "").strip()
+        expertise = (item.get("expertise") or "").strip()
+        clean_exps.append({
+            "experienceId": exp_id,
+            "domain": domain,
+            "expertise": expertise,
+            "responsibility": (item.get("responsibility") or "").strip(),
+            "years": float(item.get("years", 0.0) or 0.0),
+        })
+
+    query = """
+    MATCH (c:CV {cvId: $cvId})
+    OPTIONAL MATCH (c)-[:HAS_EXPERIENCE]->(old_w:WorkExperience)
+    DETACH DELETE old_w
+    WITH c
+    OPTIONAL MATCH (c)-[old_r1:WORKED_IN_DOMAIN]->()
+    DELETE old_r1
+    WITH c
+    OPTIONAL MATCH (c)-[old_r2:WORKED_IN_EXPERTISE]->()
+    DELETE old_r2
+    WITH c
+    UNWIND $experiences AS exp
+    MERGE (w:WorkExperience {experienceId: exp.experienceId})
+    SET w.domain = exp.domain,
+        w.expertise = exp.expertise,
+        w.responsibility = exp.responsibility,
+        w.years = exp.years,
+        w.updatedAt = datetime()
+    MERGE (c)-[:HAS_EXPERIENCE]->(w)
+    WITH c, w, exp
+    FOREACH (_ IN CASE WHEN exp.domain IS NOT NULL AND exp.domain <> '' THEN [1] ELSE [] END |
+        MERGE (d:Domain {name: exp.domain})
+        MERGE (w)-[:IN_DOMAIN]->(d)
+        MERGE (c)-[rd:WORKED_IN_DOMAIN]->(d)
+        SET rd.years = coalesce(rd.years, 0.0) + exp.years
+    )
+    FOREACH (_ IN CASE WHEN exp.expertise IS NOT NULL AND exp.expertise <> '' THEN [1] ELSE [] END |
+        MERGE (ex:Expertise {name: exp.expertise})
+        MERGE (w)-[:IN_EXPERTISE]->(ex)
+        MERGE (c)-[re:WORKED_IN_EXPERTISE]->(ex)
+        SET re.years = coalesce(re.years, 0.0) + exp.years
+    )
+    FOREACH (_ IN CASE WHEN exp.domain IS NOT NULL AND exp.domain <> '' AND exp.expertise IS NOT NULL AND exp.expertise <> '' THEN [1] ELSE [] END |
+        MERGE (d2:Domain {name: exp.domain})
+        MERGE (ex2:Expertise {name: exp.expertise})
+        MERGE (ex2)-[:UNDER_DOMAIN]->(d2)
+    )
+    RETURN count(w) AS syncedCount
+    """
+    client = get_neo4j_client()
+    res = client.execute_write(query, {
+        "cvId": cv_id,
+        "experiences": clean_exps
+    })
+    return res[0]["syncedCount"] if res else 0
+
+
 def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: List[int]) -> None:
     """Reconcile deleted relational records after a successful full sync."""
     client = get_neo4j_client()
@@ -515,6 +654,16 @@ def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: 
         WHERE NOT j.jdId IN $jdIds
         DETACH DELETE sr
     """, {"jdIds": jd_ids})
+    client.execute_write("""
+        MATCH (e:Education)<-[:HAS_EDUCATION]-(c:CV)
+        WHERE NOT c.cvId IN $cvIds
+        DETACH DELETE e
+    """, {"cvIds": cv_ids})
+    client.execute_write("""
+        MATCH (w:WorkExperience)<-[:HAS_EXPERIENCE]-(c:CV)
+        WHERE NOT c.cvId IN $cvIds
+        DETACH DELETE w
+    """, {"cvIds": cv_ids})
     for label, key, ids in (("CV", "cvId", cv_ids), ("JD", "jdId", jd_ids),
                             ("JobPosition", "jobId", jd_ids), ("User", "userId", user_ids)):
         client.execute_write(f"MATCH (n:{label}) WHERE NOT n.{key} IN $ids DETACH DELETE n", {"ids": ids})

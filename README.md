@@ -173,6 +173,61 @@ Khi thay đổi model:
    alembic upgrade head
    ```
 
+## Cập nhật JD vào PostgreSQL
+
+Quy trình chạy từ thư mục gốc project: tạo migration nếu schema JD thay đổi,
+áp dụng migration vào đúng database, sau đó chạy pipeline biến đổi và đồng bộ
+JD cùng kỹ năng vào PostgreSQL.
+
+### Cập nhật schema JD
+
+Các trường `JD.Expertise` và `JD.Qualification` cần kiểu `TEXT` để lưu nội dung
+dài hơn 200 ký tự. Migration
+`91be4a2d7c10_expand_jd_extracted_text_fields.py` chuyển hai cột từ
+`VARCHAR(200)` sang `TEXT`. Trước khi nạp JD, kiểm tra database đích và áp dụng
+migration:
+
+```powershell
+.\venv\Scripts\alembic.exe current
+.\venv\Scripts\alembic.exe upgrade head
+.\venv\Scripts\alembic.exe current
+```
+
+Revision hiện tại sau khi nâng cấp phải là `91be4a2d7c10` hoặc revision mới hơn.
+Nếu chạy bằng Docker Compose, dùng:
+
+```cmd
+docker compose exec web alembic current
+docker compose exec web alembic upgrade head
+docker compose exec web alembic current
+```
+
+### Biến đổi và nạp danh sách JD
+
+Đảm bảo PostgreSQL đang chạy, `.env` trỏ đến đúng database, và file JD nguồn có
+tại `app/data/JDs/extraction/crawler/raw/`. Chạy pipeline từ thư mục gốc:
+
+```powershell
+.\venv\Scripts\python.exe -m app.services.jd
+```
+
+Trong Docker Compose, chạy:
+
+```cmd
+docker compose exec web python -m app.services.jd
+```
+
+Lệnh trên đọc JD nguồn, trích xuất các trường, ghi file JSON Lines
+`processed-<timestamp>.txt`, rồi chèn JD và các `JD_SKILL` liên quan trong cùng
+transaction. Khi hoàn tất sẽ in số lượng JD đã chèn. Nếu thư mục
+`app/data/JDs/transformation/saving` không ghi được, file sẽ được tạo trong
+thư mục tạm của môi trường chạy; pipeline sẽ đọc chính file vừa tạo.
+
+**Lưu ý:** mỗi lần chạy lệnh sẽ xử lý lại toàn bộ file nguồn và chèn thêm các
+JD mới; pipeline hiện không khử trùng lặp. Không chạy lại trên cùng dữ liệu nếu
+không muốn tạo bản ghi trùng. Kiểm tra cấu hình database và backup phù hợp
+trước khi chạy trên môi trường có dữ liệu quan trọng.
+
 ### Lỗi Alembic thường gặp trong project này
 
 - **Autogenerate tạo migration rỗng hoặc không phát hiện bảng:** `alembic/env.py` hiện đặt `target_metadata = None`. Autogenerate cần metadata thật. Hãy import `Base` từ `app.core.database`, import tất cả module model để các bảng được đăng ký vào metadata, rồi đặt `target_metadata = Base.metadata`. Chỉ import `app.models` là chưa đủ nếu `app/models/__init__.py` chưa import tất cả model.

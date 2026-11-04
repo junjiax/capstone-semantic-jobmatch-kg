@@ -29,6 +29,14 @@ py -m app.data.JDs.extraction.crawler
 
 // Tải dữ liệu lên database
 // local
-py -m app.data.JDs.loading.main
+py -m app.data.JDs.transformation.main
+py -m app.services.jd
+
 // docker
-docker compose exec web python -m app.data.JDs.loading.main
+docker compose exec web python -m app.services.jd
+
+// Cập nhật alembic mới nhất
+docker compose exec web alembic upgrade head
+
+// Latest alembic migratetion version: 91be4a2d7c10
+docker compose exec web alembic current

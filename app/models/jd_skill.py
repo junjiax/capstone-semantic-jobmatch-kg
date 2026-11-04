@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import Vector # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

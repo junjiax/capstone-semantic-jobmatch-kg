@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user
-from app.api.v1.schemas.user import (
+from app.schemas.user import (
     ForgotPasswordRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
@@ -13,7 +13,7 @@ from app.api.v1.schemas.user import (
 )
 from app.core.database import get_db
 from app.models.user import User
-from app.services.auth import (
+from app.services.auth.auth import (
     forgot_password as forgot_password_service,
     login_user,
     refresh_user_tokens,

@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
 from app.models.user import User
-from app.services import auth
-from app.api.v1.schemas.user import (
+from app.services.auth import auth
+from app.schemas.user import (
     PasswordChange,
     UserResponse,
     UserUpdate,

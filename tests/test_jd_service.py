@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.models.jd import JD
 from app.models.jd_skill import JDSkill
-from app.services import jd as jd_service
-from app.services.jd import save_list_of_jds_to_postgresql
+from app.services.objects import jd as jd_service
+from app.services.objects.jd import save_list_of_jds_to_postgresql
 
 
 def _jd_record() -> str:

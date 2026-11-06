@@ -6,8 +6,8 @@ Chạy bằng lệnh:
 
 import pytest
 from app.clients.neo4j_client import get_neo4j_client
-from app.persist.graph.schema import init_graph_schema
-from app.persist.graph.sync_crud import (
+from app.repositories.graph.schema import init_graph_schema
+from app.repositories.graph.sync_crud import (
     upsert_user_node,
     upsert_skill_node,
     upsert_job_position_node,
@@ -21,7 +21,7 @@ from app.persist.graph.sync_crud import (
     link_skill_to_expertise,
     link_expertise_to_domain,
 )
-from app.persist.graph.match_crud import (
+from app.repositories.graph.match_crud import (
     get_job_required_skills_graph,
     get_cv_skills_graph,
     analyze_skill_gap_graph,

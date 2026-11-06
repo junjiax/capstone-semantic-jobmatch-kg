@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from torch import embedding
 from app.api.deps import get_db, get_current_user
-from app.api.v1.schemas.response import ResponseSchema
+from app.schemas.response import ResponseSchema
 
 from app.services.embedding import *
 from app.services.cv import *

@@ -3,10 +3,11 @@ Bộ kiểm thử tích hợp Neo4j Knowledge Graph & Skill Gap Analysis.
 Chạy bằng lệnh:
   python -m pytest tests/test_neo4j_integration.py -v
 """
+
 import pytest
 from app.clients.neo4j_client import get_neo4j_client
-from app.crud.graph.schema import init_graph_schema
-from app.crud.graph.sync_crud import (
+from app.persist.graph.schema import init_graph_schema
+from app.persist.graph.sync_crud import (
     upsert_user_node,
     upsert_skill_node,
     upsert_job_position_node,
@@ -20,7 +21,7 @@ from app.crud.graph.sync_crud import (
     link_skill_to_expertise,
     link_expertise_to_domain,
 )
-from app.crud.graph.match_crud import (
+from app.persist.graph.match_crud import (
     get_job_required_skills_graph,
     get_cv_skills_graph,
     analyze_skill_gap_graph,
@@ -66,17 +67,28 @@ def test_idempotent_skill_creation(neo4j_client):
 def test_idempotent_cv_and_job_sync(neo4j_client):
     """Test 3: Đồng bộ CV và JobPosition kèm kỹ năng không nhân đôi quan hệ khi chạy lại."""
     # 1. Tạo User & CV
-    upsert_user_node(user_id=888, email="candidate_test@example.com", full_name="Candidate Test", role="applicant")
+    upsert_user_node(
+        user_id=888,
+        email="candidate_test@example.com",
+        full_name="Candidate Test",
+        role="applicant",
+    )
     upsert_cv_node(cv_id=888, user_id=888, language="vi", summary="Backend Developer")
 
     # 2. Tạo Job
-    upsert_job_position_node(job_id=777, title="Python Backend Engineer", min_experience=2.0)
+    upsert_job_position_node(
+        job_id=777, title="Python Backend Engineer", min_experience=2.0
+    )
 
     # 3. Đồng bộ kỹ năng cho CV lần 1
     cv_skills_1 = [
         {"skillId": 101, "skillName": "Python", "confidence": 0.95},
         {"skillId": 102, "skillName": "FastAPI", "confidence": 0.90},
-        {"skillId": 103, "skillName": "React", "confidence": 0.70},  # Kỹ năng bổ trợ không yêu cầu
+        {
+            "skillId": 103,
+            "skillName": "React",
+            "confidence": 0.70,
+        },  # Kỹ năng bổ trợ không yêu cầu
     ]
     sync_cv_skills_graph(cv_id=888, skills=cv_skills_1)
 
@@ -91,11 +103,21 @@ def test_idempotent_cv_and_job_sync(neo4j_client):
     job_skills_1 = [
         {"skillId": 101, "skillName": "Python", "importance": 2.0, "minYears": 2.0},
         {"skillId": 102, "skillName": "FastAPI", "importance": 1.5, "minYears": 1.0},
-        {"skillId": 104, "skillName": "Docker", "importance": 1.0, "minYears": 1.0},     # Thiếu
-        {"skillId": 105, "skillName": "PostgreSQL", "importance": 1.5, "minYears": 1.0}, # Thiếu
+        {
+            "skillId": 104,
+            "skillName": "Docker",
+            "importance": 1.0,
+            "minYears": 1.0,
+        },  # Thiếu
+        {
+            "skillId": 105,
+            "skillName": "PostgreSQL",
+            "importance": 1.5,
+            "minYears": 1.0,
+        },  # Thiếu
     ]
     sync_job_skills_graph(job_id=777, skills=job_skills_1)
-    sync_job_skills_graph(job_id=777, skills=job_skills_1) # Chạy lại
+    sync_job_skills_graph(job_id=777, skills=job_skills_1)  # Chạy lại
 
     # Kiểm tra số quan hệ REQUIRES_SKILL của Job 777 đúng bằng 4
     q_job = "MATCH (j:JobPosition {jobId: 777})-[r:REQUIRES_SKILL]->() RETURN count(r) AS total"
@@ -142,7 +164,9 @@ def test_empty_cv_skills(neo4j_client):
 def test_jd_domain_and_skill_requirements(neo4j_client):
     """Test 6: Kiểm tra tạo node JD, Domain, Expertise và SkillRequirement."""
     # 1. Tạo Domain & Expertise
-    upsert_domain_node(name="Backend Development", description="Lập trình hệ thống máy chủ")
+    upsert_domain_node(
+        name="Backend Development", description="Lập trình hệ thống máy chủ"
+    )
     upsert_expertise_node(name="Python Engineering", domain_name="Backend Development")
 
     # 2. Tạo JD liên kết với Domain & Expertise
@@ -152,13 +176,23 @@ def test_jd_domain_and_skill_requirements(neo4j_client):
         domain="Backend Development",
         expertise="Python Engineering",
         qualification="Bachelor of Computer Science",
-        experience_years=3
+        experience_years=3,
     )
 
     # 3. Đồng bộ SkillRequirement cho JD
     jd_reqs = [
-        {"requirementId": 77801, "skillName": "Python", "importance": 2.0, "minYears": 3.0},
-        {"requirementId": 77802, "skillName": "FastAPI", "importance": 1.5, "minYears": 2.0},
+        {
+            "requirementId": 77801,
+            "skillName": "Python",
+            "importance": 2.0,
+            "minYears": 3.0,
+        },
+        {
+            "requirementId": 77802,
+            "skillName": "FastAPI",
+            "importance": 1.5,
+            "minYears": 2.0,
+        },
     ]
     sync_jd_skill_requirements_graph(jd_id=778, skills=jd_reqs)
 
@@ -182,7 +216,7 @@ def test_problem1_skill_matching_score(neo4j_client):
         "domainScore": 0.8000,
         "expertiseScore": 0.8500,
         "experienceScore": 0.8000,
-        "qualificationScore": 0.8000
+        "qualificationScore": 0.8000,
     }
     save_cv_jd_match_result_graph(cv_id=888, jd_id=778, scores=scores)
 
@@ -202,7 +236,9 @@ def test_problem2_domain_gap_matrix(neo4j_client):
     Kiểm tra ma trận tương quan và tỷ lệ bao phủ theo domain.
     """
     # CV 888 có kỹ năng Python, FastAPI, React (đã sync ở test 3)
-    domain_gaps = get_domain_skill_gap_matrix_graph(cv_id=888, target_domains=["Backend Development"])
+    domain_gaps = get_domain_skill_gap_matrix_graph(
+        cv_id=888, target_domains=["Backend Development"]
+    )
     assert len(domain_gaps) == 1
     backend_gap = domain_gaps[0]
     assert backend_gap["domainName"] == "Backend Development"
@@ -218,13 +254,27 @@ def test_skill_expertise_domain_hierarchy(neo4j_client):
     Xác minh đường đi: (:Skill)-[:BELONGS_TO_EXPERTISE]->(:Expertise)-[:UNDER_DOMAIN]->(:Domain)
     """
     # 1. Tạo Domain và Expertise
-    upsert_domain_node(name="Data Engineering & AI", description="Lĩnh vực dữ liệu và trí tuệ nhân tạo")
-    upsert_expertise_node(name="Machine Learning & Deep Learning", domain_name="Data Engineering & AI")
+    upsert_domain_node(
+        name="Data Engineering & AI", description="Lĩnh vực dữ liệu và trí tuệ nhân tạo"
+    )
+    upsert_expertise_node(
+        name="Machine Learning & Deep Learning", domain_name="Data Engineering & AI"
+    )
 
     # 2. Tạo Skill và liên kết với Expertise
-    upsert_skill_node(skill_id=106, name="PyTorch", category="AI", expertise_name="Machine Learning & Deep Learning")
-    link_skill_to_expertise(skill_name="PyTorch", expertise_name="Machine Learning & Deep Learning")
-    link_expertise_to_domain(expertise_name="Machine Learning & Deep Learning", domain_name="Data Engineering & AI")
+    upsert_skill_node(
+        skill_id=106,
+        name="PyTorch",
+        category="AI",
+        expertise_name="Machine Learning & Deep Learning",
+    )
+    link_skill_to_expertise(
+        skill_name="PyTorch", expertise_name="Machine Learning & Deep Learning"
+    )
+    link_expertise_to_domain(
+        expertise_name="Machine Learning & Deep Learning",
+        domain_name="Data Engineering & AI",
+    )
 
     # 3. Kiểm tra liên kết phân cấp 3 tầng trên đồ thị
     query = """
@@ -251,7 +301,7 @@ def test_multi_jd_domain_skill_deduplication(neo4j_client):
         title="Golang Backend Engineer",
         domain="Backend Development",
         expertise="Python Engineering",
-        experience_years=2
+        experience_years=2,
     )
     jd_reqs_go = [
         {"requirementId": 77901, "skillName": "Docker", "importance": 1.5},
@@ -261,7 +311,9 @@ def test_multi_jd_domain_skill_deduplication(neo4j_client):
     sync_jd_skill_requirements_graph(jd_id=779, skills=jd_reqs_go)
 
     # Chạy phân tích Domain Gap cho Domain "Backend Development"
-    domain_gaps = get_domain_skill_gap_matrix_graph(cv_id=888, target_domains=["Backend Development"])
+    domain_gaps = get_domain_skill_gap_matrix_graph(
+        cv_id=888, target_domains=["Backend Development"]
+    )
     assert len(domain_gaps) == 1
     backend_gap = domain_gaps[0]
 
@@ -278,7 +330,9 @@ def test_expertise_skill_gap_analysis(neo4j_client):
     Test 11: Phân tích khoảng cách kỹ năng theo Expertise (Chuyên môn sâu).
     Kiểm tra Expertise Gap trả về chính xác trong [0, 1] và đầy đủ matchedSkills, missingSkills.
     """
-    exp_gaps = get_expertise_skill_gap_matrix_graph(cv_id=888, target_expertises=["Python Engineering"])
+    exp_gaps = get_expertise_skill_gap_matrix_graph(
+        cv_id=888, target_expertises=["Python Engineering"]
+    )
     assert len(exp_gaps) == 1
     exp_gap = exp_gaps[0]
 
@@ -310,5 +364,3 @@ def test_cleanup_test_data(neo4j_client):
     MATCH (s:Skill) WHERE s.skillId IN [9991, 101, 102, 103, 104, 105, 106] OR s.normalizedName IN ['go', 'pytorch'] DETACH DELETE s
     """
     neo4j_client.execute_write(cleanup_query)
-
-

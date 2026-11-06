@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.api.v1.schemas.response import ResponseSchema
-from app.api.v1.schemas.semantic_search import ( SkillSearchRequest, SkillSearchResponse, JobRequirementSearchRequest, JobRequirementSearchResponse,
+from app.api.v1.schemas.semantic_search import (
+    SkillSearchRequest,
+    SkillSearchResponse,
+    JobRequirementSearchRequest,
+    JobRequirementSearchResponse,
 )
 from app.services import semantic_search as service
 

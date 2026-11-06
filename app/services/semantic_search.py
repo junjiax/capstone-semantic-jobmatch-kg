@@ -2,16 +2,24 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.clients.sentence_transformer import get_sentence_transformer
 from app.services.text_embedding import normalize_text
-from app.crud import semantic_search as crud
-from app.api.v1.schemas.semantic_search import ( SkillSearchRequest, SkillSearchResponse, SkillSearchResultItem, JobRequirementSearchRequest, JobRequirementSearchResponse, JobRequirementSearchResultItem,
+from app.persist.postgres import semantic_search as crud
+from app.api.v1.schemas.semantic_search import (
+    SkillSearchRequest,
+    SkillSearchResponse,
+    SkillSearchResultItem,
+    JobRequirementSearchRequest,
+    JobRequirementSearchResponse,
+    JobRequirementSearchResultItem,
 )
 
 
-def search_skills_semantic(db: Session, request: SkillSearchRequest) -> SkillSearchResponse:
+def search_skills_semantic(
+    db: Session, request: SkillSearchRequest
+) -> SkillSearchResponse:
     """Xử lý tìm kiếm kỹ năng tương đồng ngữ nghĩa."""
     cleaned_query = normalize_text(request.query)
     client = get_sentence_transformer()
-  
+
     # Mã hóa chuỗi truy vấn thành vector 384 chiều
     query_vector = client.encode(cleaned_query, normalize=True)
 
@@ -63,12 +71,11 @@ def search_skills_semantic(db: Session, request: SkillSearchRequest) -> SkillSea
 
 def search_job_requirements_semantic(
     db: Session, request: JobRequirementSearchRequest
-    ) -> JobRequirementSearchResponse:
-    
+) -> JobRequirementSearchResponse:
     """Xử lý tìm kiếm tin tuyển dụng tương đồng ngữ nghĩa."""
     cleaned_query = normalize_text(request.query)
     client = get_sentence_transformer()
-  
+
     query_vector = client.encode(cleaned_query, normalize=True)
     job_matches = crud.search_job_requirements_vector(
         db, query_vector, top_k=request.top_k, min_similarity=request.min_similarity

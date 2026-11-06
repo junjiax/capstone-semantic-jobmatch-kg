@@ -10,9 +10,9 @@ from app.models.jd_skill import JDSkill
 from app.models.profile import Profile
 from app.models.profile_skill import ProfileSkill
 
-from app.crud.graph import schema as graph_schema
-from app.crud.graph import sync_crud as graph_sync
-from app.crud.graph import match_crud as graph_match
+from app.persist.graph import schema as graph_schema
+from app.persist.graph import sync_crud as graph_sync
+from app.persist.graph import match_crud as graph_match
 
 logger = logging.getLogger(__name__)
 

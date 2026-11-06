@@ -40,3 +40,5 @@ docker compose exec web alembic upgrade head
 
 // Latest alembic migratetion version: 91be4a2d7c10
 docker compose exec web alembic current
+
+py -m app.data.CVs.extraction.main

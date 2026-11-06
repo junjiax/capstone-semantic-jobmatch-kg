@@ -108,7 +108,7 @@ async def sync_single_job(
 async def get_job_skills_from_graph(
     job_id: int,
 ):
-    from app.crud.graph.match_crud import get_job_required_skills_graph
+    from app.persist.graph.match_crud import get_job_required_skills_graph
     skills = get_job_required_skills_graph(job_id)
     return ResponseSchema(
         success=True,
@@ -126,7 +126,7 @@ async def get_cv_skills_from_graph(
     cv_id: int,
     current_user: User = Depends(require_cv_access),
 ):
-    from app.crud.graph.match_crud import get_cv_skills_graph
+    from app.persist.graph.match_crud import get_cv_skills_graph
     skills = get_cv_skills_graph(cv_id)
     return ResponseSchema(
         success=True,

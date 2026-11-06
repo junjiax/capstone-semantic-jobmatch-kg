@@ -1,21 +1,19 @@
-
-
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, model_validator
 
 from app.models.user import UserRole
 
 
-
 class UserRegister(BaseModel):
 
-    email:            EmailStr
-    full_name:        str = Field(..., min_length=2,  max_length=255, examples=["Nguyen Van A"])
-    phone:            Optional[str] = Field(None, max_length=20, examples=["0901234567"])
-    password:         str = Field(..., min_length=8, max_length=128)
+    email: EmailStr
+    full_name: str = Field(..., min_length=2, max_length=255, examples=["Nguyen Van A"])
+    phone: Optional[str] = Field(None, max_length=20, examples=["0901234567"])
+    password: str = Field(..., min_length=8, max_length=128)
     confirm_password: str
+    is_verified: bool = True
 
     @model_validator(mode="after")
     def passwords_match(self) -> "UserRegister":
@@ -26,8 +24,9 @@ class UserRegister(BaseModel):
 
 class UserUpdate(BaseModel):
     """Người dùng tự cập nhật hồ sơ của mình (chỉ tên & SĐT)."""
+
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
-    phone:     Optional[str] = Field(None, max_length=20)
+    phone: Optional[str] = Field(None, max_length=20)
 
 
 class UserUpdateByHR(UserUpdate):
@@ -35,14 +34,16 @@ class UserUpdateByHR(UserUpdate):
     HR cập nhật thông tin user.
     Thêm quyền thay đổi role và kích hoạt/khóa tài khoản.
     """
-    role:      Optional[UserRole] = None
-    is_active: Optional[bool]     = None
+
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
 
 
 class PasswordChange(BaseModel):
     """Đổi mật khẩu — bắt buộc nhập mật khẩu hiện tại để xác nhận."""
-    current_password:  str
-    new_password:      str = Field(..., min_length=8, max_length=128)
+
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
     confirm_new_password: str
 
     @model_validator(mode="after")
@@ -54,13 +55,15 @@ class PasswordChange(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     """Gửi email đặt lại mật khẩu."""
+
     email: EmailStr
 
 
 class ResetPasswordRequest(BaseModel):
     """Đặt lại mật khẩu bằng token nhận từ email."""
-    token:                str
-    new_password:         str = Field(..., min_length=8, max_length=128)
+
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
     confirm_new_password: str
 
     @model_validator(mode="after")
@@ -72,6 +75,7 @@ class ResetPasswordRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Dùng refresh token để lấy cặp token mới."""
+
     refresh_token: str
 
 
@@ -79,20 +83,22 @@ class RefreshTokenRequest(BaseModel):
 # OUTPUT SCHEMAS (Response)
 # ════════════════════════════════════════════════════════
 
+
 class UserResponse(BaseModel):
     """
     Hồ sơ đầy đủ — trả về cho chính người dùng đó.
     Bao gồm role, trạng thái, timestamps.
     """
-    Id:          int
-    email:       EmailStr
-    full_name:   str
-    phone:       Optional[str]
-    role:        UserRole
-    is_active:   bool
-    is_verified: bool
-    created_at:  datetime
-    updated_at:  datetime
+
+    Id: int
+    email: EmailStr = Field(validation_alias=AliasChoices("Email", "email"))
+    full_name: str = Field(validation_alias=AliasChoices("FullName", "full_name"))
+    phone: Optional[str] = Field(validation_alias=AliasChoices("Phone", "phone"))
+    role: UserRole = Field(validation_alias=AliasChoices("Role", "role"))
+    is_active: bool = Field(validation_alias=AliasChoices("IsActive", "is_active"))
+    is_verified: bool = Field(validation_alias=AliasChoices("IsVerified", "is_verified"))
+    created_at: datetime = Field(validation_alias=AliasChoices("CreatedAt", "created_at"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("UpdatedAt", "updated_at"))
 
     model_config = {"from_attributes": True}
 
@@ -102,35 +108,40 @@ class UserPublicResponse(BaseModel):
     Hồ sơ rút gọn — HR dùng khi xem danh sách ứng viên.
     Loại bỏ thông tin nhạy cảm (is_verified, timestamps...).
     """
-    Id:        int
-    email:     EmailStr
-    full_name: str
-    phone:     Optional[str]
-    role:      UserRole
-    is_active: bool
-    created_at: datetime
+
+    Id: int
+    email: EmailStr = Field(validation_alias=AliasChoices("Email", "email"))
+    full_name: str = Field(validation_alias=AliasChoices("FullName", "full_name"))
+    phone: Optional[str] = Field(validation_alias=AliasChoices("Phone", "phone"))
+    role: UserRole = Field(validation_alias=AliasChoices("Role", "role"))
+    is_active: bool = Field(validation_alias=AliasChoices("IsActive", "is_active"))
+    created_at: datetime = Field(validation_alias=AliasChoices("CreatedAt", "created_at"))
 
     model_config = {"from_attributes": True}
 
 
 class TokenResponse(BaseModel):
     """Cặp token trả về sau khi đăng nhập hoặc refresh."""
-    access_token:  str
+
+    access_token: str
     refresh_token: str
-    token_type:    str = "bearer"
+    token_type: str = "bearer"
 
 
 class PaginatedUsers(BaseModel):
     """Danh sách users có metadata phân trang."""
-    total:     int
-    page:      int
+
+    total: int
+    page: int
     page_size: int
-    items:     list[UserPublicResponse]
+    items: list[UserPublicResponse]
+
 
 class HRCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     full_name: str
+
 
 class LoginRequest(BaseModel):
     email: EmailStr

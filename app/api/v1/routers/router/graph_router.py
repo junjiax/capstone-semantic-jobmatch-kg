@@ -136,6 +136,59 @@ async def get_cv_skills_from_graph(
 
 
 @router.get(
+    "/cvs/{cv_id}/education",
+    summary="Lấy thông tin học vấn của CV từ Neo4j",
+    description="Truy vấn danh sách bằng cấp/học vấn của CV từ Knowledge Graph.",
+)
+async def get_cv_education_from_graph(
+    cv_id: int,
+    current_user: User = Depends(require_cv_access),
+):
+    from app.crud.graph.match_crud import get_cv_educations_graph
+    educations = get_cv_educations_graph(cv_id)
+    return ResponseSchema(
+        success=True,
+        message="CV educations retrieved from graph",
+        data=educations
+    )
+
+
+@router.get(
+    "/cvs/{cv_id}/experience",
+    summary="Lấy thông tin kinh nghiệm làm việc của CV từ Neo4j",
+    description="Truy vấn danh sách kinh nghiệm làm việc (Domain, Expertise, số năm) của CV từ Knowledge Graph.",
+)
+async def get_cv_experience_from_graph(
+    cv_id: int,
+    current_user: User = Depends(require_cv_access),
+):
+    from app.crud.graph.match_crud import get_cv_work_experiences_graph
+    experiences = get_cv_work_experiences_graph(cv_id)
+    return ResponseSchema(
+        success=True,
+        message="CV work experiences retrieved from graph",
+        data=experiences
+    )
+
+
+@router.get(
+    "/jobs/{job_id}/education",
+    summary="Lấy yêu cầu học vấn của Job từ Neo4j",
+    description="Truy vấn yêu cầu bằng cấp và số năm kinh nghiệm của vị trí từ Knowledge Graph.",
+)
+async def get_job_education_from_graph(
+    job_id: int,
+):
+    from app.crud.graph.match_crud import get_job_education_requirements_graph
+    requirements = get_job_education_requirements_graph(job_id)
+    return ResponseSchema(
+        success=True,
+        message="Job education requirements retrieved from graph",
+        data=requirements
+    )
+
+
+@router.get(
     "/skill-gap/{cv_id}/{job_id}",
     summary="Phân tích Skill Gap & Giải thích kết quả",
     description="Phân tích chi tiết kỹ năng đáp ứng, kỹ năng còn thiếu, kỹ năng bổ trợ, tỷ lệ bao phủ và khuyến nghị phát triển kỹ năng.",

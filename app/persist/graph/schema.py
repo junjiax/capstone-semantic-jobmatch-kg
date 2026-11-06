@@ -15,6 +15,9 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT expertise_name_unique IF NOT EXISTS FOR (e:Expertise) REQUIRE e.name IS UNIQUE",
     "CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.userId IS UNIQUE",
     "CREATE CONSTRAINT match_result_id_unique IF NOT EXISTS FOR (m:MatchResult) REQUIRE m.matchResultId IS UNIQUE",
+    "CREATE CONSTRAINT education_id_unique IF NOT EXISTS FOR (e:Education) REQUIRE e.educationId IS UNIQUE",
+    "CREATE CONSTRAINT work_exp_id_unique IF NOT EXISTS FOR (w:WorkExperience) REQUIRE w.experienceId IS UNIQUE",
+    "CREATE CONSTRAINT education_level_name_unique IF NOT EXISTS FOR (el:EducationLevel) REQUIRE el.name IS UNIQUE",
 ]
 
 INDEXES = [
@@ -26,6 +29,10 @@ INDEXES = [
     "CREATE INDEX jd_expertise_idx IF NOT EXISTS FOR (j:JD) ON (j.expertise)",
     "CREATE INDEX jd_title_idx IF NOT EXISTS FOR (j:JD) ON (j.title)",
     "CREATE INDEX cv_user_id_idx IF NOT EXISTS FOR (c:CV) ON (c.userId)",
+    "CREATE INDEX education_school_idx IF NOT EXISTS FOR (e:Education) ON (e.school)",
+    "CREATE INDEX education_major_idx IF NOT EXISTS FOR (e:Education) ON (e.major)",
+    "CREATE INDEX work_exp_domain_idx IF NOT EXISTS FOR (w:WorkExperience) ON (w.domain)",
+    "CREATE INDEX work_exp_expertise_idx IF NOT EXISTS FOR (w:WorkExperience) ON (w.expertise)",
 ]
 
 VECTOR_INDEXES = [

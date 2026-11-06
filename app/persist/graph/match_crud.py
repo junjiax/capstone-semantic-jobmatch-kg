@@ -35,6 +35,55 @@ def get_cv_skills_graph(cv_id: int) -> List[Dict[str, Any]]:
     return client.execute_read(query, {"cvId": cv_id})
 
 
+def get_cv_educations_graph(cv_id: int) -> List[Dict[str, Any]]:
+    query = """
+    MATCH (c:CV {cvId: $cvId})-[:HAS_EDUCATION]->(e:Education)
+    OPTIONAL MATCH (e)-[:OF_LEVEL]->(el:EducationLevel)
+    RETURN
+        e.educationId AS educationId,
+        e.school AS school,
+        e.major AS major,
+        e.degree AS degree,
+        coalesce(el.name, e.level) AS level,
+        e.graduationYear AS graduationYear,
+        e.gpa AS gpa
+    ORDER BY e.graduationYear DESC
+    """
+    client = get_neo4j_client()
+    return client.execute_read(query, {"cvId": cv_id})
+
+
+def get_cv_work_experiences_graph(cv_id: int) -> List[Dict[str, Any]]:
+    query = """
+    MATCH (c:CV {cvId: $cvId})-[:HAS_EXPERIENCE]->(w:WorkExperience)
+    OPTIONAL MATCH (w)-[:IN_DOMAIN]->(d:Domain)
+    OPTIONAL MATCH (w)-[:IN_EXPERTISE]->(ex:Expertise)
+    RETURN
+        w.experienceId AS experienceId,
+        coalesce(d.name, w.domain) AS domain,
+        coalesce(ex.name, w.expertise) AS expertise,
+        w.responsibility AS responsibility,
+        w.years AS years
+    ORDER BY w.years DESC
+    """
+    client = get_neo4j_client()
+    return client.execute_read(query, {"cvId": cv_id})
+
+
+def get_job_education_requirements_graph(job_id: int) -> List[Dict[str, Any]]:
+    query = """
+    MATCH (j:JD {jdId: $jobId})
+    OPTIONAL MATCH (j)-[:REQUIRES_EDUCATION_LEVEL]->(el:EducationLevel)
+    RETURN
+        j.jdId AS jobId,
+        j.qualification AS qualification,
+        el.name AS requiredLevel,
+        j.experienceYears AS minExperienceYears
+    """
+    client = get_neo4j_client()
+    return client.execute_read(query, {"jobId": job_id})
+
+
 def analyze_skill_gap_graph(cv_id: int, job_id: int) -> Dict[str, Any]:
     """
     Truy vấn phân tích Skill Gap và giải thích chi tiết mức độ phù hợp giữa một CV và một vị trí việc làm / JD.

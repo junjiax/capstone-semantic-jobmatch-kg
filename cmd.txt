@@ -48,3 +48,5 @@ py -m app.services.entities.profile
 
 docker compose up web --build -d
 docker compose exec web python -m app.services.entities.profile
+
+docker compose exec web python -m scripts.generate_embeddings

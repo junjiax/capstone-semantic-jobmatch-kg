@@ -12,14 +12,7 @@ from app.models.profile import Profile
 from app.models.profile_edu import ProfileEdu
 from app.models.profile_skill import ProfileSkill
 from app.models.profile_work_exp import ProfileWorkExp
-from app.models.enum import (
-    EducationLevel,
-    ProfileFileType,
-    JobStatus,
-    UserStatus,
-    UserRole,
-    CVFileType,
-)
+from app.models.enum import EducationLevel, ProfileFileType
 from app.repositories.postgres.profile import sync_list_of_profiles
 from app.repositories.postgres.profile_edu import sync_profile_edu
 from app.repositories.postgres.profile_skill import sync_profile_skills
@@ -298,5 +291,3 @@ def main(db: Session) -> Dict[str, int]:
 if __name__ == "__main__":
     with SessionLocal() as db:
         main(db)
-    # result = get_list_of_profiles()
-    # print(result)

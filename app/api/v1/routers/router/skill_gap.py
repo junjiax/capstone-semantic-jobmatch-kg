@@ -21,7 +21,7 @@ router = APIRouter()
 @router.get(
     "/health",
     summary="Kiểm tra trạng thái Service Skill Gap",
-    tags=["Skill Gap Analysis"]
+    tags=["Skill Gap Analysis"],
 )
 def health_check():
     """Kiểm tra router Skill Gap đã hoạt động hay chưa."""
@@ -42,7 +42,7 @@ def health_check():
     
     Hỗ trợ truyền `profile_id` & `jd_id`, hoặc truyền trực tiếp mảng `candidate_skills` & `required_skills`.
     """,
-    tags=["Skill Gap Analysis"]
+    tags=["Skill Gap Analysis"],
 )
 def analyze_skill_gap_endpoint(
     request: SkillGapAnalysisRequest,
@@ -53,12 +53,12 @@ def analyze_skill_gap_endpoint(
     if request.profile_id is None and not request.candidate_skills:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Vui lòng cung cấp 'profile_id' hoặc danh sách 'candidate_skills'."
+            detail="Vui lòng cung cấp 'profile_id' hoặc danh sách 'candidate_skills'.",
         )
     if request.jd_id is None and not request.required_skills:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Vui lòng cung cấp 'jd_id' hoặc danh sách 'required_skills'."
+            detail="Vui lòng cung cấp 'jd_id' hoặc danh sách 'required_skills'.",
         )
 
     # Nếu truyền profile_id, xác thực tồn tại trong DB
@@ -67,7 +67,7 @@ def analyze_skill_gap_endpoint(
         if not p:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy Profile với ID = {request.profile_id}"
+                detail=f"Không tìm thấy Profile với ID = {request.profile_id}",
             )
 
     # Nếu truyền jd_id, xác thực tồn tại trong DB
@@ -76,7 +76,7 @@ def analyze_skill_gap_endpoint(
         if not j:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Không tìm thấy JD tuyển dụng với ID = {request.jd_id}"
+                detail=f"Không tìm thấy JD tuyển dụng với ID = {request.jd_id}",
             )
 
     try:
@@ -90,7 +90,7 @@ def analyze_skill_gap_endpoint(
         logger.exception(f"Lỗi khi thực hiện Skill Gap Analysis: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi xử lý nội bộ trong quá trình phân tích Skill Gap: {str(e)}"
+            detail=f"Lỗi xử lý nội bộ trong quá trình phân tích Skill Gap: {str(e)}",
         )
 
 
@@ -99,7 +99,7 @@ def analyze_skill_gap_endpoint(
     response_model=ResponseSchema[SkillGapResponse],
     status_code=status.HTTP_200_OK,
     summary="Phân tích nhanh Skill Gap qua Profile ID và JD ID",
-    tags=["Skill Gap Analysis"]
+    tags=["Skill Gap Analysis"],
 )
 def analyze_skill_gap_by_ids(
     profile_id: int = Path(..., description="ID của hồ sơ ứng viên", example=1),

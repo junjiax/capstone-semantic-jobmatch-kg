@@ -7,14 +7,14 @@ from .channels import it_viec_main, career_viet_main
 STEP 1. Crawl data from the following pages:
 """
 # DEFINE FILE PATH FOR IMPORTED URLS
-SOURCE_DIR_IMPORTED_URLs = Path(f"app/data/JDs/extraction/configs/imported-urls.txt")
+SOURCE_DIR_IMPORTED_URLs = Path(f"app/dataset/JDs/extraction/configs/imported-urls.txt")
 
 # DEFINE VARIABLE FOR READING URLS FROM FILE
 BROWSER_URLs_IMPORTED = SOURCE_DIR_IMPORTED_URLs.read_text(encoding="utf-8").splitlines()
 
 # DEFINE OUTPUT FILE PATH FOR SAVING RAW DATA
 OUTPUT_DIR_RAW_JD_CONTENT = Path(
-    f'app/data/JDs/extraction/crawler/raw/crawled-{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.txt'
+    f'app/dataset/JDs/extraction/crawler/raw/crawled-{datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.txt'
 )
 
 # DEFINE LIST FOR STORING IMPORTED URLS

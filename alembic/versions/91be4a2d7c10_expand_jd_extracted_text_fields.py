@@ -31,9 +31,23 @@ def upgrade() -> None:
         type_=sa.Text(),
         existing_nullable=True,
     )
+    op.alter_column(
+        "JD",
+        "Responsibility",
+        existing_type=sa.String(length=200),
+        type_=sa.Text(),
+        existing_nullable=True,
+    )
 
 
 def downgrade() -> None:
+    op.alter_column(
+        "JD",
+        "Responsibility",
+        existing_type=sa.Text(),
+        type_=sa.String(length=200),
+        existing_nullable=True,
+    )
     op.alter_column(
         "JD",
         "Qualification",

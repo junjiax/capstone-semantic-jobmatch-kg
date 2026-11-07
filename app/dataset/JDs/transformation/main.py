@@ -21,7 +21,7 @@ def main() -> Dict[str, object]:
     )  # Store cleaned objects as dictionaries
 
     with open(
-        "app/data/JDs/extraction/crawler/raw/crawled-2026-11-02-17-06-41.txt",
+        "app/dataset/JDs/extraction/crawler/raw/crawled-2026-11-02-17-06-41.txt",
         "r",
         encoding="utf-8",
     ) as file:
@@ -51,7 +51,7 @@ def main() -> Dict[str, object]:
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     output_path = write_cleaned_jds(
-        Path("app/data/JDs/transformation/saving"),
+        Path("app/dataset/JDs/transformation/saving"),
         list_of_cleaned_objs,
         timestamp,
     )

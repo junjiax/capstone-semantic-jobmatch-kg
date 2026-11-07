@@ -1,75 +1,83 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.models.profile import Profile
 
+"""
+    GET LIST OF FILTERED PROFILES
+"""
 
-def get_profiles(db: Session, filters: Dict[str, Profile]) -> List[Profile]:
-    """
-    Lấy toàn bộ danh sách Profile thỏa mãn bộ lọc.
-    """
+
+def get_profiles(db: Session, filters: Dict[str, Any]) -> List[Profile]:
     query = db.query(Profile)
 
-    if "UserId" in filters:
+    if filters.get("UserId") is not None:
         query = query.filter(Profile.UserId == filters["UserId"])
-    if "FileType" in filters:
+
+    if filters.get("FileType") is not None:
         query = query.filter(Profile.FileType == filters["FileType"])
-    if filters.get("start_date"):
+
+    if filters.get("start_date") is not None:
         query = query.filter(Profile.CreatedAt >= filters["start_date"])
-    if filters.get("end_date"):
+
+    if filters.get("end_date") is not None:
         query = query.filter(Profile.CreatedAt <= filters["end_date"])
 
-    # Luôn trả về từ mới nhất đến cũ nhất
     return query.order_by(Profile.CreatedAt.desc()).all()
 
 
-def get_profile_by_id(db: Session, Profile_id: int) -> Optional[Profile]:
-    """
-    Lấy thông tin chi tiết của một bản Profile dựa trên ID.
-    """
-    return db.query(Profile).filter(Profile.Id == Profile_id).first()
+"""
+    GET PROFILE BY ID
+"""
 
 
-def create_profile(db: Session, candidate_id: int, path: str, file_type: Any):
+def get_profile_by_id(db: Session, profile_id: int) -> Optional[Profile]:
+    return db.get(Profile, profile_id)
+
+
+"""
+    SYNC PROFILE TO DATABASE
+"""
+
+
+def sync_profile(db: Session, **kwargs: Profile) -> Profile:
     """
     Lưu metadata của file Profile mới.
     Lưu ý: 'version' được quản lý tự động qua mốc thời gian CreatedAt.
     """
-    db_Profile = Profile(
-        UserId=candidate_id,
-        FileUrl=path,
-        FileType=file_type,
-    )
-    db.add(db_Profile)
-    db.commit()
-    db.refresh(db_Profile)
-    return db_Profile
+    try:
+        profile = Profile(**kwargs)
 
-
-def get_latest_Profile(db: Session, candidate_id: int):
-    """
-    Truy vấn bản Profile mới nhất để hiển thị mặc định hoặc thực hiện phân tích.
-    """
-    return (
-        db.query(Profile)
-        .filter(Profile.UserId == candidate_id)
-        .order_by(Profile.CreatedAt.desc())
-        .first()
-    )
-
-
-def save_parsed_data(
-    db: Session, Profile_id: int, parsed_data: Dict[str, Any]
-) -> Optional[Profile]:
-    """
-    Lưu kết quả trích xuất (Parsing) vào các trường: RawText, CleanText, Summary, Language.
-    """
-    db_Profile = db.query(Profile).filter(Profile.Id == Profile_id).first()
-
-    if db_Profile:
-        for key, value in parsed_data.items():
-            if hasattr(db_Profile, key):
-                setattr(db_Profile, key, value)
-
+        db.add(profile)
         db.commit()
-        db.refresh(db_Profile)
-    return db_Profile
+        db.refresh(profile)
+
+        return profile
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+
+"""
+    SYNC BATCH OF PROFILES TO DATABASE
+"""
+
+
+def sync_list_of_profiles(
+    db: Session, parsed_profiles_data: List[Dict[str, Any]]
+) -> List[Profile]:
+    try:
+        list_of_profiles = [Profile(**profile) for profile in parsed_profiles_data]
+
+        db.add_all(list_of_profiles)
+        db.commit()
+
+        for profile in list_of_profiles:
+            db.refresh(profile)
+
+        return list_of_profiles
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise

@@ -42,3 +42,9 @@ docker compose exec web alembic upgrade head
 docker compose exec web alembic current
 
 py -m app.data.CVs.extraction.main
+
+py -m app.services.entities.profile
+
+
+docker compose up web --build -d
+docker compose exec web python -m app.services.entities.profile

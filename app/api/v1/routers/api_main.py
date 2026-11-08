@@ -12,15 +12,32 @@ api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router.include_router(user.router, prefix="/user", tags=["Users"])
+
+
+"""
+    KNOWLEDGE GRAPH
+"""
+
 api_router.include_router(
     graph_router.router, prefix="/graph", tags=["Knowledge Graph"]
 )
+
+"""
+    SEMANTIC-SEARCH
+"""
+
 api_router.include_router(
     semantic_search.router, prefix="/semantic-search", tags=["Semantic Search"]
 )
-api_router.include_router(
-    skill_match.router, prefix="/skill-match", tags=["Skill Matching"]
-)
+
+"""
+    SKILL-MATCHING
+"""
+api_router.include_router(skill_match.router, prefix="/graph", tags=["Skill Matching"])
+
+"""
+    SKILL-GAP-ANALYSIS
+"""
 api_router.include_router(
     skill_gap.router, prefix="/skill-gap", tags=["Skill Gap Analysis"]
 )

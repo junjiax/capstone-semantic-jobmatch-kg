@@ -66,7 +66,7 @@ VECTOR_INDEXES = [
         `vector.similarity_function`: 'cosine'
       }
     }
-    """
+    """,
 ]
 
 

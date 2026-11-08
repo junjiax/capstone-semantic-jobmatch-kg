@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_active_user, require_hr_or_admin
-from app.api.v1.schemas.response import ResponseSchema
+from app.schemas.response import ResponseSchema
 from app.models.user import User, UserRole
 from app.models.profile import Profile
-from app.services import graph_service
+from app.services.graph import graph_service
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ async def sync_single_job(
 async def get_job_skills_from_graph(
     job_id: int,
 ):
-    from app.crud.graph.match_crud import get_job_required_skills_graph
+    from app.repositories.graph.match_crud import get_job_required_skills_graph
     skills = get_job_required_skills_graph(job_id)
     return ResponseSchema(
         success=True,
@@ -126,7 +126,7 @@ async def get_cv_skills_from_graph(
     cv_id: int,
     current_user: User = Depends(require_cv_access),
 ):
-    from app.crud.graph.match_crud import get_cv_skills_graph
+    from app.repositories.graph.match_crud import get_cv_skills_graph
     skills = get_cv_skills_graph(cv_id)
     return ResponseSchema(
         success=True,

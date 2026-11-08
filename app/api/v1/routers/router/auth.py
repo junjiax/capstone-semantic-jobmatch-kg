@@ -2,17 +2,23 @@ from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.api.deps import get_current_active_user
-from app.models.user import User
-from app.services import user_service
-from app.api.v1.schemas.user import (
+from app.schemas.user import (
     ForgotPasswordRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
     TokenResponse,
     UserRegister,
     UserResponse,
+)
+from app.core.database import get_db
+from app.models.user import User
+from app.services.auth.auth import (
+    forgot_password as forgot_password_service,
+    login_user,
+    refresh_user_tokens,
+    register_user,
+    reset_password as reset_password_service,
 )
 
 router = APIRouter()
@@ -37,7 +43,7 @@ def register(
     data: UserRegister,
     db: Session = Depends(get_db),
 ):
-    return user_service.register_user(db, data)
+    return register_user(db, data)
 
 
 # ─── ĐĂNG NHẬP ───────────────────────────────────────────────
@@ -59,7 +65,7 @@ async def login(
     body: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    return user_service.login_user(db, email=body.username, password=body.password)
+    return login_user(db, email=body.username, password=body.password)
 
 
 # ─── ĐĂNG XUẤT ───────────────────────────────────────────────
@@ -95,7 +101,7 @@ async def refresh_token(
     body: RefreshTokenRequest,
     db: Session = Depends(get_db),
 ):
-    return user_service.refresh_user_tokens(db, body.refresh_token)
+    return refresh_user_tokens(db, body.refresh_token)
 
 
 # ─── QUÊN MẬT KHẨU ───────────────────────────────────────────
@@ -115,7 +121,7 @@ async def forgot_password(
     body: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ):
-    user_service.forgot_password(db, body.email)
+    await forgot_password_service(db, body.email)
     return {
         "message": "Nếu email này tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi."
     }
@@ -134,5 +140,5 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: Session = Depends(get_db),
 ):
-    user_service.reset_password(db, token=body.token, new_password=body.new_password)
+    reset_password_service(db, token=body.token, new_password=body.new_password)
     return {"message": "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại."}

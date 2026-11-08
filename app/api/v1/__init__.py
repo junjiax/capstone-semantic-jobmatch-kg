@@ -1,2 +1,2 @@
-from .schemas import *
+from ...schemas import *
 from .routers import *

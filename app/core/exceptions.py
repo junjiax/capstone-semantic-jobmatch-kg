@@ -1,6 +1,6 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from app.api.v1.schemas.response import ResponseSchema
+from app.schemas.response import ResponseSchema
 from fastapi.exceptions import RequestValidationError
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

@@ -6,11 +6,11 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from app.clients.sentence_transformer import get_sentence_transformer
-from app.crud.graph.match_crud import save_cv_jd_match_result_graph
+from app.repositories.graph.match_crud import save_cv_jd_match_result_graph
 from app.models.jd import JD
 from app.models.profile import Profile
-from app.services.graph_service import sync_cv_to_graph, sync_job_to_graph
-from app.services.text_embedding import build_job_text, normalize_text
+from app.services.graph.graph_service import sync_cv_to_graph, sync_job_to_graph
+from app.services.semantic_search.text_embedding import build_job_text, normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,16 @@ logger = logging.getLogger(__name__)
 TRANSFERABLE_CLUSTERS: Dict[str, Dict[str, Any]] = {
     "rdbms": {
         "name": "Cơ sở dữ liệu quan hệ (RDBMS)",
-        "skills": {"postgresql", "postgres", "mysql", "sql", "mariadb", "oracle", "sql server", "sqlite"},
+        "skills": {
+            "postgresql",
+            "postgres",
+            "mysql",
+            "sql",
+            "mariadb",
+            "oracle",
+            "sql server",
+            "sqlite",
+        },
     },
     "nosql": {
         "name": "Cơ sở dữ liệu NoSQL",
@@ -31,7 +40,16 @@ TRANSFERABLE_CLUSTERS: Dict[str, Dict[str, Any]] = {
     },
     "frontend_frameworks": {
         "name": "Modern Frontend Frameworks",
-        "skills": {"react", "reactjs", "vue", "vuejs", "angular", "nextjs", "nuxt", "svelte"},
+        "skills": {
+            "react",
+            "reactjs",
+            "vue",
+            "vuejs",
+            "angular",
+            "nextjs",
+            "nuxt",
+            "svelte",
+        },
     },
     "containers": {
         "name": "Container & Orchestration",
@@ -54,25 +72,101 @@ TRANSFERABLE_CLUSTERS: Dict[str, Dict[str, Any]] = {
 # ── 2. PHÂN LOẠI KỸ NĂNG CỐT LÕI (CORE) VS CÔNG CỤ PHỤ (SECONDARY) ───────────
 CORE_TECH_SKILLS = {
     # Ngôn ngữ lập trình cốt lõi
-    "python", "java", "c++", "c#", "javascript", "typescript", "golang", "go",
-    "php", "ruby", "rust", "scala", "swift", "kotlin", "dart",
+    "python",
+    "java",
+    "c++",
+    "c#",
+    "javascript",
+    "typescript",
+    "golang",
+    "go",
+    "php",
+    "ruby",
+    "rust",
+    "scala",
+    "swift",
+    "kotlin",
+    "dart",
     # Frameworks chính
-    "fastapi", "django", "flask", "spring", "spring boot", "react", "reactjs",
-    "vue", "vuejs", "angular", "node.js", "express", "nextjs", ".net", "asp.net",
+    "fastapi",
+    "django",
+    "flask",
+    "spring",
+    "spring boot",
+    "react",
+    "reactjs",
+    "vue",
+    "vuejs",
+    "angular",
+    "node.js",
+    "express",
+    "nextjs",
+    ".net",
+    "asp.net",
     # Chuyên môn Data/AI cốt lõi
-    "machine learning", "deep learning", "ai", "nlp", "computer vision", "data science",
+    "machine learning",
+    "deep learning",
+    "ai",
+    "nlp",
+    "computer vision",
+    "data science",
 }
 
 # Từ điển các kỹ năng dùng để fallback trích xuất từ văn bản khi JD chưa có dữ liệu bảng con
 COMMON_EXTRACT_SKILLS = [
-    "Python", "Java", "C++", "C#", ".NET", "PHP", "JavaScript", "TypeScript", "HTML", "CSS",
-    "React", "Vue", "Angular", "Node.js", "Django", "Flask", "FastAPI", "Spring Boot",
-    "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle",
-    "Docker", "Kubernetes", "AWS", "Azure", "GCP", "CI/CD", "Git", "Linux",
-    "Machine Learning", "Deep Learning", "AI", "NLP", "Data Analysis",
-    "Marketing", "Digital Marketing", "SEO", "Content Writing", "Social Media",
-    "Sales", "Customer Service", "Product Management", "Project Management",
-    "Communication", "Teamwork", "Problem Solving", "English", "Excel", "UI/UX", "Figma",
+    "Python",
+    "Java",
+    "C++",
+    "C#",
+    ".NET",
+    "PHP",
+    "JavaScript",
+    "TypeScript",
+    "HTML",
+    "CSS",
+    "React",
+    "Vue",
+    "Angular",
+    "Node.js",
+    "Django",
+    "Flask",
+    "FastAPI",
+    "Spring Boot",
+    "SQL",
+    "MySQL",
+    "PostgreSQL",
+    "MongoDB",
+    "Redis",
+    "Oracle",
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "Azure",
+    "GCP",
+    "CI/CD",
+    "Git",
+    "Linux",
+    "Machine Learning",
+    "Deep Learning",
+    "AI",
+    "NLP",
+    "Data Analysis",
+    "Marketing",
+    "Digital Marketing",
+    "SEO",
+    "Content Writing",
+    "Social Media",
+    "Sales",
+    "Customer Service",
+    "Product Management",
+    "Project Management",
+    "Communication",
+    "Teamwork",
+    "Problem Solving",
+    "English",
+    "Excel",
+    "UI/UX",
+    "Figma",
 ]
 
 
@@ -107,7 +201,9 @@ def compute_cosine_similarity(
     norm_b = float(np.linalg.norm(b))
 
     if norm_a < 1e-9 or norm_b < 1e-9:
-        raise ValueError("Cannot calculate cosine similarity: vector norm is zero or near zero")
+        raise ValueError(
+            "Cannot calculate cosine similarity: vector norm is zero or near zero"
+        )
 
     similarity = float(np.dot(a, b) / (norm_a * norm_b))
     return float(max(-1.0, min(1.0, similarity)))
@@ -130,9 +226,7 @@ def evaluate_smart_skill_matching(
         if s.SkillTitle and s.SkillTitle.strip()
     ]
     jd_skills = [
-        s.Title.strip()
-        for s in (jd.skills or [])
-        if s.Title and s.Title.strip()
+        s.Title.strip() for s in (jd.skills or []) if s.Title and s.Title.strip()
     ]
 
     jd_full_text = (
@@ -188,12 +282,14 @@ def evaluate_smart_skill_matching(
                 if c_low not in consumed_cand_skills:
                     c_cluster = _find_cluster_for_skill(c_orig)
                     if c_cluster and c_cluster[0] == cluster_id:
-                        transferable_skills.append({
-                            "required_skill": req,
-                            "candidate_skill": c_orig,
-                            "cluster_name": cluster_name,
-                            "note": f"Cùng nhóm {cluster_name} - Dễ dàng chuyển đổi",
-                        })
+                        transferable_skills.append(
+                            {
+                                "required_skill": req,
+                                "candidate_skill": c_orig,
+                                "cluster_name": cluster_name,
+                                "note": f"Cùng nhóm {cluster_name} - Dễ dàng chuyển đổi",
+                            }
+                        )
                         consumed_cand_skills.add(c_low)
                         found_transferable = True
                         break
@@ -203,8 +299,7 @@ def evaluate_smart_skill_matching(
 
     # 3. Kỹ năng cộng thêm (Bonus Skills): Ứng viên có nhưng JD không bắt buộc
     bonus_skills = [
-        s for s in candidate_skills
-        if s.lower() not in consumed_cand_skills
+        s for s in candidate_skills if s.lower() not in consumed_cand_skills
     ]
 
     # 4. Tính toán điểm trọng số thông minh
@@ -253,7 +348,9 @@ def calculate_cv_jd_matching(
     if not cv_text:
         raise ValueError(f"Profile with id {profile_id} has no valid text content")
 
-    jd_text = build_job_text(jd) or normalize_text(jd.CleanText) or normalize_text(jd.RawText)
+    jd_text = (
+        build_job_text(jd) or normalize_text(jd.CleanText) or normalize_text(jd.RawText)
+    )
     if not jd_text:
         raise ValueError(f"JD with id {jd_id} has no valid text content")
 
@@ -332,7 +429,9 @@ def calculate_cv_jd_matching(
             },
         )
         graph_synced = True
-        logger.info(f"Persisted MATCHES_JD edge on Neo4j for CV {profile_id} and JD {jd_id}")
+        logger.info(
+            f"Persisted MATCHES_JD edge on Neo4j for CV {profile_id} and JD {jd_id}"
+        )
     except Exception as exc:
         logger.warning(f"Neo4j sync warning: {exc}")
         graph_synced = False

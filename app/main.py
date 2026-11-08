@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.core.config import get_settings
-from app.api.v1.routers import api_router
+from app.api.v1.routers.api_main import api_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.clients.neo4j_client import neo4j_client
-from app.crud.graph.schema import init_graph_schema
+from app.repositories.graph.schema import init_graph_schema
 
 
 @asynccontextmanager

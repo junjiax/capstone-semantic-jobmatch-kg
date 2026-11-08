@@ -6,7 +6,7 @@ Cách chạy:
 import sys
 import logging
 from app.core.database import SessionLocal
-from app.services.graph_service import sync_all_from_postgres, setup_knowledge_graph_schema
+from app.services.graph.graph_service import sync_all_from_postgres, setup_knowledge_graph_schema
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

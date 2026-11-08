@@ -28,7 +28,9 @@ def _normalize_skill(skill: str) -> str:
     return " ".join(skill.strip().lower().split())
 
 
-def _generate_recommendation(missing_skill: str, closest_skill: Optional[str] = None, similarity: float = 0.0) -> str:
+def _generate_recommendation(
+    missing_skill: str, closest_skill: Optional[str] = None, similarity: float = 0.0
+) -> str:
     """Tạo câu khuyến nghị hành động học tập thông minh dựa trên kỹ năng thiếu."""
     if closest_skill and similarity >= 0.60:
         return (
@@ -42,8 +44,7 @@ def _generate_recommendation(missing_skill: str, closest_skill: Optional[str] = 
 
 
 def analyze_skill_gap_service(
-    db: Optional[Session],
-    request: SkillGapAnalysisRequest
+    db: Optional[Session], request: SkillGapAnalysisRequest
 ) -> SkillGapResponse:
     """
     Thực hiện phân tích khoảng trống kỹ năng:
@@ -62,35 +63,45 @@ def analyze_skill_gap_service(
 
     # 1.1. Lấy kỹ năng Ứng viên (Profile)
     if request.profile_id is not None and db is not None:
-        db_cand_skills = profile_skill_repo.get_skills_by_profile_id(db, request.profile_id)
+        db_cand_skills = profile_skill_repo.get_skills_by_profile_id(
+            db, request.profile_id
+        )
         for s in db_cand_skills:
-            cand_skill_entries.append({
-                "name": s.SkillTitle,
-                "vector": s.Vector,
-            })
+            cand_skill_entries.append(
+                {
+                    "name": s.SkillTitle,
+                    "vector": s.Vector,
+                }
+            )
     elif request.candidate_skills:
         for s_name in request.candidate_skills:
-            cand_skill_entries.append({
-                "name": s_name.strip(),
-                "vector": None,
-            })
+            cand_skill_entries.append(
+                {
+                    "name": s_name.strip(),
+                    "vector": None,
+                }
+            )
 
     # 1.2. Lấy kỹ năng Yêu cầu (JD)
     if request.jd_id is not None and db is not None:
         db_req_skills = jd_skill_repo.get_jd_skills(db, request.jd_id)
         for s in db_req_skills:
-            req_skill_entries.append({
-                "name": s.Title,
-                "vector": s.Vector,
-                "importance": 1.0,
-            })
+            req_skill_entries.append(
+                {
+                    "name": s.Title,
+                    "vector": s.Vector,
+                    "importance": 1.0,
+                }
+            )
     elif request.required_skills:
         for s_name in request.required_skills:
-            req_skill_entries.append({
-                "name": s_name.strip(),
-                "vector": None,
-                "importance": 1.0,
-            })
+            req_skill_entries.append(
+                {
+                    "name": s_name.strip(),
+                    "vector": None,
+                    "importance": 1.0,
+                }
+            )
 
     # Kiểm tra trường hợp danh sách rỗng
     if not req_skill_entries:
@@ -111,10 +122,12 @@ def analyze_skill_gap_service(
             partially_matched_skills=[],
             missing_skills=[],
             extra_skills=[
-                ExtraSkillItem(skill_name=item["name"], potential_value="Kỹ năng tự do") 
+                ExtraSkillItem(skill_name=item["name"], potential_value="Kỹ năng tự do")
                 for item in cand_skill_entries
             ],
-            recommendations=["Vị trí công việc hiện không liệt kê yêu cầu kỹ năng cụ thể."],
+            recommendations=[
+                "Vị trí công việc hiện không liệt kê yêu cầu kỹ năng cụ thể."
+            ],
         )
 
     # ─────────────────────────────────────────────────────────────
@@ -215,7 +228,9 @@ def analyze_skill_gap_service(
                 )
             )
             used_candidate_indices.add(best_cand_idx)
-            rec = _generate_recommendation(req_name, closest_skill=best_cand_name, similarity=max_sim)
+            rec = _generate_recommendation(
+                req_name, closest_skill=best_cand_name, similarity=max_sim
+            )
             recommendations.append(rec)
 
         else:
@@ -238,7 +253,7 @@ def analyze_skill_gap_service(
             extra_results.append(
                 ExtraSkillItem(
                     skill_name=cand["name"],
-                    potential_value="Thế mạnh mở rộng, hỗ trợ phát triển"
+                    potential_value="Thế mạnh mở rộng, hỗ trợ phát triển",
                 )
             )
 
@@ -258,7 +273,9 @@ def analyze_skill_gap_service(
     total_weight_sum = sum(req.get("importance", 1.0) for req in req_skill_entries)
 
     if total_weight_sum > 0:
-        coverage_ratio = round((matched_weight_sum + partial_weight_sum) / total_weight_sum, 4)
+        coverage_ratio = round(
+            (matched_weight_sum + partial_weight_sum) / total_weight_sum, 4
+        )
     else:
         coverage_ratio = 0.0
 

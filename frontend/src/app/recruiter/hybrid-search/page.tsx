@@ -30,6 +30,40 @@ const rankConfig = [
   { rank: 3, medal: "🥉", bg: "bg-orange-50", border: "border-orange-200" },
 ];
 
+function getSkillName(skill: unknown): string {
+  if (typeof skill === "string") return skill;
+  if (skill && typeof skill === "object" && "name" in skill && typeof skill.name === "string") {
+    return skill.name;
+  }
+  return "Kỹ năng chưa đặt tên";
+}
+
+function toScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? score : 0;
+}
+
+function normalizeCandidate(candidate: Record<string, unknown>): CandidateSearchResult {
+  const matchedSkills = Array.isArray(candidate.matchedSkills) ? candidate.matchedSkills : [];
+  const missingSkills = Array.isArray(candidate.missingSkills) ? candidate.missingSkills : [];
+  const vectorScore = toScore(candidate.vectorScore);
+  const graphSkillScore = toScore(candidate.graphSkillScore);
+  const totalScore = toScore(candidate.totalScore ?? candidate.hybridScore);
+
+  return {
+    cvId: Number(candidate.cvId ?? 0),
+    candidateTitle: typeof candidate.candidateTitle === "string" ? candidate.candidateTitle : undefined,
+    totalScore,
+    vectorScore,
+    graphSkillScore,
+    matchedSkillsCount: Number(candidate.matchedSkillsCount ?? matchedSkills.length),
+    requiredSkillsCount: Number(candidate.requiredSkillsCount ?? matchedSkills.length + missingSkills.length),
+    matchedSkills: matchedSkills as CandidateSearchResult["matchedSkills"],
+    missingSkills: missingSkills as CandidateSearchResult["missingSkills"],
+    experienceYears: typeof candidate.experienceYears === "number" ? candidate.experienceYears : undefined,
+  };
+}
+
 export default function HybridSearchPage() {
   const [jobId, setJobId] = useState<number>(0);
   const [jobs, setJobs] = useState<{ id: number; title: string }[]>([]);
@@ -61,7 +95,11 @@ export default function HybridSearchPage() {
       );
       const items = res.data?.data?.candidates || res.data?.data || [];
       if (Array.isArray(items)) {
-        setCandidates(items);
+        setCandidates(
+          items
+            .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+            .map(normalizeCandidate),
+        );
       } else {
         setCandidates([]);
       }
@@ -91,13 +129,12 @@ export default function HybridSearchPage() {
         <div className="mb-8">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 tracking-wider uppercase mb-2">
             <Sparkles className="h-3.5 w-3.5" />
-            Bài toán 3 — Sàng lọc ứng viên thông minh (Hybrid Search cho HR)
           </span>
           <h1 className="text-3xl font-bold text-slate-900">
             Tìm Kiếm & Xếp Hạng Ứng Viên Tiềm Năng
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Gọi API trực tiếp: <code className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-xs font-mono">GET /api/v1/graph/jobs/{`{job_id}`}/candidates</code>
+            Tìm và xếp hạng ứng viên dựa trên mức độ phù hợp với vị trí tuyển dụng.
           </p>
         </div>
 
@@ -105,14 +142,14 @@ export default function HybridSearchPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Job ID (Database ID)</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Vị trí tuyển dụng</label>
               <select
                 value={jobId}
                 onChange={(e) => setJobId(Number(e.target.value))}
                 disabled={jobs.length === 0}
                 className="w-32 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {jobs.map((job) => <option key={job.id} value={job.id}>#{job.id} {job.title}</option>)}
+                {jobs.map((job) => <option key={job.id} value={job.id}>{job.title} · Mã #{job.id}</option>)}
               </select>
             </div>
             <div>
@@ -135,12 +172,12 @@ export default function HybridSearchPage() {
               {loading ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  Đang quét vector HNSW & Graph...
+                  Đang tìm ứng viên phù hợp...
                 </>
               ) : (
                 <>
                   <Search className="h-4 w-4" />
-                  Tìm Ứng Viên (GET /jobs/id/candidates)
+                  Tìm ứng viên phù hợp
                 </>
               )}
             </button>
@@ -160,15 +197,15 @@ export default function HybridSearchPage() {
         <div className="flex flex-wrap gap-4 mb-6 text-xs text-slate-500">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-blue-500" />
-            <span>Vector ANN (pgvector)</span>
+            <span>Mức độ tương đồng nội dung</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Network className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Graph Skill Score (Neo4j)</span>
+            <span>Mức độ phù hợp kỹ năng</span>
           </div>
           <div className="flex items-center gap-1.5">
             <TrendingUp className="h-3.5 w-3.5 text-violet-500" />
-            <span>Tổng Điểm Lai: 0.50·Vector + 0.50·Graph</span>
+            <span>Điểm tổng hợp: nội dung + kỹ năng</span>
           </div>
         </div>
 
@@ -227,9 +264,18 @@ export default function HybridSearchPage() {
                 border: "border-slate-200",
               };
               const isExpanded = expandedId === c.cvId;
-              const totalPct = Math.round(c.totalScore * 100);
-              const vectorPct = Math.round(c.vectorScore * 100);
-              const graphPct = Math.round(c.graphSkillScore * 100);
+              const totalScore = toScore(c.totalScore);
+              const vectorScore = toScore(c.vectorScore);
+              const graphSkillScore = toScore(c.graphSkillScore);
+              const totalPct = Math.round(totalScore * 100);
+              const vectorPct = Math.round(vectorScore * 100);
+              const graphPct = Math.round(graphSkillScore * 100);
+              const fitLabel =
+                totalPct >= 75 ? "Rất phù hợp" : totalPct >= 50 ? "Có tiềm năng" : "Cần xem xét thêm";
+              const fitColor =
+                totalPct >= 75 ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                  : totalPct >= 50 ? "text-amber-700 bg-amber-50 border-amber-200"
+                    : "text-slate-600 bg-slate-100 border-slate-200";
 
               return (
                 <div key={c.cvId} className={`rounded-2xl border shadow-sm ${cfg.bg} ${cfg.border} overflow-hidden`}>
@@ -241,7 +287,7 @@ export default function HybridSearchPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <UserCheck className="h-4 w-4 text-blue-500" />
-                            <h3 className="font-bold text-slate-900">{c.candidateName || `Ứng viên #${c.cvId}`}</h3>
+                            <h3 className="font-bold text-slate-900">{c.candidateTitle || `CV #${c.cvId}`}</h3>
                             {totalPct >= 75 && (
                               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
                                 Ứng viên sáng giá
@@ -277,24 +323,30 @@ export default function HybridSearchPage() {
                         <span className="text-xs text-slate-400 mr-1">
                           Kỹ năng đáp ứng ({c.matchedSkillsCount ?? c.matchedSkills.length}/{c.requiredSkillsCount ?? c.matchedSkills.length}):
                         </span>
-                        {c.matchedSkills.map((s) => (
-                          <span key={s} className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        {c.matchedSkills.map((skill, index) => {
+                          const name = getSkillName(skill);
+                          return (
+                          <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                             <CheckCircle2 className="h-2.5 w-2.5" />
-                            {s}
+                            {name}
                           </span>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
                     {c.missingSkills && c.missingSkills.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <span className="text-xs text-slate-400 mr-1">Còn thiếu ({c.missingSkills.length}):</span>
-                        {c.missingSkills.map((s) => (
-                          <span key={s} className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                        {c.missingSkills.map((skill, index) => {
+                          const name = getSkillName(skill);
+                          return (
+                          <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
                             <XCircle className="h-2.5 w-2.5" />
-                            {s}
+                            {name}
                           </span>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -314,29 +366,73 @@ export default function HybridSearchPage() {
                   {/* Accordion: Explanation */}
                   {isExpanded && (
                     <div className="border-t border-slate-200 bg-slate-50 p-5">
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
                         <Network className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-semibold text-slate-900">
-                          Giải thích xếp hạng từ Neo4j Knowledge Graph
-                        </span>
+                          <div>
+                            <span className="text-sm font-semibold text-slate-900">Vì sao hồ sơ này được đề xuất?</span>
+                            <p className="mt-0.5 text-xs text-slate-500">Tóm tắt các yếu tố ảnh hưởng đến thứ hạng.</p>
+                          </div>
+                        </div>
+                        <span className={`rounded-full border px-3 py-1 text-xs font-bold ${fitColor}`}>{fitLabel}</span>
+                      </div>
+                      <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+                        <div className="flex items-start gap-3">
+                          <Award className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                          <div>
+                            <div className="text-sm font-bold text-slate-900">
+                              {c.candidateTitle || `CV #${c.cvId}`} đạt mức phù hợp {totalPct}%
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                              Hồ sơ được đánh giá dựa trên mức tương đồng nội dung, kỹ năng đáp ứng và mức độ liên quan với vị trí đang chọn.
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       <div className="grid sm:grid-cols-2 gap-4 text-sm">
                         <div className="bg-white rounded-xl border border-slate-200 p-4">
-                          <div className="text-xs font-bold text-blue-600 mb-2">📐 Thông số Vector & Graph</div>
+                          <div className="text-xs font-bold text-blue-600 mb-2">Mức độ phù hợp tổng quan</div>
                           <div className="space-y-1 text-xs text-slate-600">
-                            <div>Cosine Similarity Vector: <strong>{vectorPct}%</strong></div>
-                            <div>Độ phủ kỹ năng đồ thị: <strong>{graphPct}%</strong></div>
+                            <div>Nội dung hồ sơ với vị trí: <strong>{vectorPct}%</strong></div>
+                            <div>Kỹ năng đáp ứng yêu cầu: <strong>{graphPct}%</strong></div>
                             <div>Số năm kinh nghiệm: <strong>{c.experienceYears ?? 0} năm</strong></div>
                           </div>
                         </div>
                         <div className="bg-white rounded-xl border border-slate-200 p-4">
-                          <div className="text-xs font-bold text-emerald-600 mb-2">🔗 Công thức xếp hạng</div>
+                          <div className="text-xs font-bold text-emerald-600 mb-2">Gợi ý cho nhà tuyển dụng</div>
                           <div className="space-y-1 text-xs text-slate-600">
-                            <div>FinalScore = 0.50·VectorScore + 0.50·GraphScore</div>
-                            <div>Điểm tổng hợp: <strong>{c.totalScore.toFixed(4)}</strong></div>
+                            <div><strong>{c.matchedSkills?.length || 0}</strong> kỹ năng phù hợp</div>
+                            <div><strong>{c.missingSkills?.length || 0}</strong> kỹ năng cần xem thêm</div>
+                            <div className="pt-1 text-emerald-700">
+                              {totalPct >= 75 ? "Nên ưu tiên xem hồ sơ này." : "Nên xem chi tiết trước khi quyết định."}
+                            </div>
                           </div>
                         </div>
                       </div>
+                      {c.matchedSkills?.length > 0 && (
+                        <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                          <div className="mb-2 text-xs font-bold text-emerald-700">Điểm mạnh nổi bật</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {c.matchedSkills.map((skill, index) => (
+                              <span key={`detail-matched-${index}`} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-700 shadow-sm">
+                                {getSkillName(skill)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {c.missingSkills?.length > 0 && (
+                        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+                          <div className="mb-2 text-xs font-bold text-amber-700">Nội dung nên xác minh thêm</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {c.missingSkills.map((skill, index) => (
+                              <span key={`detail-missing-${index}`} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-amber-700 shadow-sm">
+                                {getSkillName(skill)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

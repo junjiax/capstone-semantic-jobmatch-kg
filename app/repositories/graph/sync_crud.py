@@ -335,6 +335,7 @@ def upsert_jd_node(
 def upsert_cv_node(
     cv_id: int,
     user_id: int,
+    title: Optional[str] = None,
     language: Optional[str] = "en",
     summary: Optional[str] = None,
     embedding: Optional[List[float]] = None
@@ -344,11 +345,13 @@ def upsert_cv_node(
     MERGE (c:CV {cvId: $cvId})
     ON CREATE SET
         c.userId = $userId,
+        c.title = $title,
         c.language = $language,
         c.summary = $summary,
         c.createdAt = datetime()
     ON MATCH SET
         c.language = $language,
+        c.title = $title,
         c.summary = $summary,
         c.updatedAt = datetime()
     MERGE (u)-[:OWNS_CV]->(c)
@@ -360,6 +363,7 @@ def upsert_cv_node(
     res = client.execute_write(query, {
         "cvId": cv_id,
         "userId": user_id,
+        "title": title or "",
         "language": language or "en",
         "summary": summary or "",
         "embedding": embedding
@@ -667,4 +671,3 @@ def prune_deleted_records_graph(cv_ids: List[int], jd_ids: List[int], user_ids: 
     for label, key, ids in (("CV", "cvId", cv_ids), ("JD", "jdId", jd_ids),
                             ("JobPosition", "jobId", jd_ids), ("User", "userId", user_ids)):
         client.execute_write(f"MATCH (n:{label}) WHERE NOT n.{key} IN $ids DETACH DELETE n", {"ids": ids})
-

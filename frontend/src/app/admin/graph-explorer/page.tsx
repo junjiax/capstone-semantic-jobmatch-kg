@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Network,
   Search,
@@ -15,6 +15,7 @@ import {
   User,
   RefreshCw,
   Sliders,
+  Check,
 } from "lucide-react";
 import GraphCanvas from "@/components/visualizers/GraphCanvas";
 import { GraphNode, GraphLink } from "@/types";
@@ -34,13 +35,51 @@ export default function GraphExplorerPage() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [queryType, setQueryType] = useState<"job" | "cv">("job");
-  const [entityId, setEntityId] = useState<number>(1);
+  const [selectedEntityIds, setSelectedEntityIds] = useState<number[]>([1]);
+  const [entityOptions, setEntityOptions] = useState<Array<{
+    id: number;
+    label: string;
+    searchText: string;
+  }>>([]);
+  const [entitySearch, setEntitySearch] = useState("");
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [loadingGraph, setLoadingGraph] = useState(false);
   const [queryNote, setQueryNote] = useState<string | null>(null);
+  const [maxNodes, setMaxNodes] = useState(50);
 
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(
     new Set(["Domain", "Expertise", "Skill", "JobPosition", "Candidate"])
   );
+
+  useEffect(() => {
+    const loadEntityOptions = async () => {
+      try {
+        const endpoint = queryType === "job" ? "/jd/available" : "/profile/available";
+        const response = await apiClient.get(endpoint);
+        const items = response.data?.data || [];
+        setEntityOptions(items.map((item: {
+          id: number;
+          title?: string;
+          domain?: string;
+          expertise?: string;
+          skills?: string[];
+        }) => ({
+          id: item.id,
+          label: item.title || `${queryType === "job" ? "Vị trí" : "CV"} #${item.id}`,
+          searchText: [item.title, item.domain, item.expertise, ...(item.skills || [])]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase(),
+        })));
+        setSelectedEntityIds((current) => current.filter((id) =>
+          items.some((item: { id: number }) => item.id === id),
+        ).slice(0, 10));
+      } catch {
+        setEntityOptions([]);
+      }
+    };
+    void loadEntityOptions();
+  }, [queryType]);
 
   const toggleType = (type: string) => {
     setVisibleTypes((prev) => {
@@ -56,52 +95,57 @@ export default function GraphExplorerPage() {
     setQueryNote(null);
 
     try {
+      const ids = selectedEntityIds.slice(0, 10);
+      if (ids.length === 0) {
+        setQueryNote("Hãy chọn ít nhất một mục trong danh sách.");
+        setLoadingGraph(false);
+        return;
+      }
+
       if (queryType === "job") {
-        // Call GET /api/v1/graph/jobs/{job_id}/skills
-        const res = await apiClient.get(`/graph/jobs/${entityId}/skills`);
-        const skills = res.data?.data || [];
-        const jobNode: GraphNode = {
-          id: `job_${entityId}`,
-          label: `Job #${entityId}`,
-          type: "JobPosition",
-        };
-        const skillNodes: GraphNode[] = skills.map((s: { name: string; id?: number }) => ({
-          id: `skill_${s.name}`,
-          label: s.name,
-          type: "Skill",
-        }));
-        const newLinks: GraphLink[] = skills.map((s: { name: string }) => ({
-          source: `job_${entityId}`,
-          target: `skill_${s.name}`,
-          relationship: "REQUIRE",
-        }));
-
-        setNodes([jobNode, ...skillNodes]);
-        setLinks(newLinks);
-        setQueryNote(`Đã tải thành công mạng lưới kỹ năng yêu cầu của Job #${entityId} từ Neo4j.`);
+        const responses = await Promise.all(
+          ids.map((id) => apiClient.get(`/graph/jobs/${id}/skills`)),
+        );
+        const nextNodes: GraphNode[] = [];
+        const nextLinks: GraphLink[] = [];
+        responses.forEach((res, index) => {
+          const id = ids[index];
+          const skills = res.data?.data || [];
+          const jobNodeId = `job_${id}`;
+          nextNodes.push({ id: jobNodeId, label: `Job #${id}`, type: "JobPosition" });
+          skills.forEach((skill: { name: string }) => {
+            const skillNodeId = `skill_${skill.name}`;
+            if (!nextNodes.some((node) => node.id === skillNodeId)) {
+              nextNodes.push({ id: skillNodeId, label: skill.name, type: "Skill" });
+            }
+            nextLinks.push({ source: jobNodeId, target: skillNodeId, relationship: "REQUIRE" });
+          });
+        });
+        setNodes(nextNodes);
+        setLinks(nextLinks);
+        setQueryNote(`Đã tải ${ids.length} vị trí và ${nextNodes.filter((node) => node.type === "Skill").length} kỹ năng.`);
       } else {
-        // Call GET /api/v1/graph/cvs/{cv_id}/skills
-        const res = await apiClient.get(`/graph/cvs/${entityId}/skills`);
-        const skills = res.data?.data || [];
-        const cvNode: GraphNode = {
-          id: `cand_${entityId}`,
-          label: `Candidate #${entityId}`,
-          type: "Candidate",
-        };
-        const skillNodes: GraphNode[] = skills.map((s: { name: string; id?: number }) => ({
-          id: `skill_${s.name}`,
-          label: s.name,
-          type: "Skill",
-        }));
-        const newLinks: GraphLink[] = skills.map((s: { name: string }) => ({
-          source: `cand_${entityId}`,
-          target: `skill_${s.name}`,
-          relationship: "HAS_SKILL",
-        }));
-
-        setNodes([cvNode, ...skillNodes]);
-        setLinks(newLinks);
-        setQueryNote(`Đã tải thành công mạng lưới kỹ năng của CV #${entityId} từ Neo4j.`);
+        const responses = await Promise.all(
+          ids.map((id) => apiClient.get(`/graph/cvs/${id}/skills`)),
+        );
+        const nextNodes: GraphNode[] = [];
+        const nextLinks: GraphLink[] = [];
+        responses.forEach((res, index) => {
+          const id = ids[index];
+          const skills = res.data?.data || [];
+          const cvNodeId = `cand_${id}`;
+          nextNodes.push({ id: cvNodeId, label: `CV #${id}`, type: "Candidate" });
+          skills.forEach((skill: { name: string }) => {
+            const skillNodeId = `skill_${skill.name}`;
+            if (!nextNodes.some((node) => node.id === skillNodeId)) {
+              nextNodes.push({ id: skillNodeId, label: skill.name, type: "Skill" });
+            }
+            nextLinks.push({ source: cvNodeId, target: skillNodeId, relationship: "HAS_SKILL" });
+          });
+        });
+        setNodes(nextNodes);
+        setLinks(nextLinks);
+        setQueryNote(`Đã tải ${ids.length} CV và ${nextNodes.filter((node) => node.type === "Skill").length} kỹ năng.`);
       }
     } catch (err) {
       console.warn("Neo4j live query failed:", err);
@@ -111,11 +155,37 @@ export default function GraphExplorerPage() {
     }
   };
 
-  const filteredNodes = nodes.filter(
+  const toggleEntity = (id: number) => {
+    setSelectedEntityIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : current.length < 10
+          ? [...current, id]
+          : current,
+    );
+  };
+
+  const applyQuickGroup = (keyword: string, limit: number) => {
+    const matches = entityOptions
+      .filter((item) => item.searchText.includes(keyword.toLowerCase()))
+      .slice(0, limit)
+      .map((item) => item.id);
+    setSelectedEntityIds(matches);
+    setQueryNote(matches.length
+      ? `Đã chọn ${matches.length} mục theo nhóm “${keyword}”.`
+      : `Chưa tìm thấy dữ liệu phù hợp với nhóm “${keyword}”.`);
+  };
+
+  const filteredEntityOptions = entityOptions
+    .filter((item) => item.searchText.includes(entitySearch.toLowerCase()))
+    .slice(0, 30);
+
+  const matchingNodes = nodes.filter(
     (n) =>
       visibleTypes.has(n.type) &&
       n.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const filteredNodes = matchingNodes.slice(0, maxNodes);
   const filteredLinks = links.filter(
     (l) =>
       filteredNodes.some((n) => n.id === l.source) &&
@@ -130,13 +200,13 @@ export default function GraphExplorerPage() {
         <div className="mb-6">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 tracking-wider uppercase mb-2">
             <Network className="h-3.5 w-3.5" />
-            Knowledge Graph Lab — Neo4j LPG
+            Khu vực quản trị — Mạng lưới nghề nghiệp
           </span>
           <h1 className="text-3xl font-bold text-slate-900">
             Trực Quan Hóa Mạng Lưới Tri Thức Nghề Nghiệp
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Truy vấn đồ thị thực tế: Domain → Expertise → Skill cùng các quan hệ REQUIRE, HAS_SKILL, RELATED_TO từ Neo4j.
+            Khám phá mối liên hệ giữa lĩnh vực, chuyên môn, kỹ năng và vị trí việc làm.
           </p>
         </div>
 
@@ -152,7 +222,7 @@ export default function GraphExplorerPage() {
                     queryType === "job" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  Job Skills (GET /jobs/id/skills)
+                  Kỹ năng của vị trí
                 </button>
                 <button
                   onClick={() => setQueryType("cv")}
@@ -160,21 +230,82 @@ export default function GraphExplorerPage() {
                     queryType === "cv" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  CV Skills (GET /cvs/id/skills)
+                  Kỹ năng của hồ sơ
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-semibold">
-                    {queryType === "job" ? "Job ID:" : "CV ID:"}
-                  </span>
-                  <input
-                    type="number"
-                    value={entityId}
-                    onChange={(e) => setEntityId(Number(e.target.value))}
-                    className="w-20 px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              <div className="relative min-w-72">
+                <span className="mb-1 block text-xs font-semibold text-slate-500">
+                  {queryType === "job" ? "Chọn vị trí" : "Chọn CV"} (tối đa 10)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectorOpen((open) => !open)}
+                  className="flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-left"
+                >
+                  {selectedEntityIds.length ? selectedEntityIds.map((id) => {
+                    const item = entityOptions.find((option) => option.id === id);
+                    return (
+                      <span key={id} className="inline-flex max-w-36 items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                        <span className="truncate">{item?.label || `#${id}`}</span>
+                        <X className="h-3 w-3 shrink-0" onClick={(event) => { event.stopPropagation(); toggleEntity(id); }} />
+                      </span>
+                    );
+                  }) : <span className="px-1 text-xs text-slate-400">Chọn dữ liệu...</span>}
+                </button>
+                {selectorOpen && (
+                  <div className="absolute left-0 top-full z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                    <div className="mb-2 flex items-center justify-between px-1">
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        Đã chọn {selectedEntityIds.length}/10
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEntityIds([])}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                      >
+                        Xóa tất cả
+                      </button>
+                    </div>
+                    <input
+                      autoFocus
+                      value={entitySearch}
+                      onChange={(event) => setEntitySearch(event.target.value)}
+                      placeholder="Tìm theo tên, domain hoặc kỹ năng..."
+                      className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="max-h-52 overflow-y-auto">
+                      {filteredEntityOptions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleEntity(item.id)}
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-blue-50"
+                        >
+                          <span className={`flex h-4 w-4 items-center justify-center rounded border ${selectedEntityIds.includes(item.id) ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300"}`}>
+                            {selectedEntityIds.includes(item.id) && <Check className="h-3 w-3" />}
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                          <span className="ml-auto text-[10px] text-slate-400">#{item.id}</span>
+                        </button>
+                      ))}
+                      {!filteredEntityOptions.length && <p className="p-3 text-center text-xs text-slate-400">Không tìm thấy dữ liệu</p>}
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              <span className="text-xs font-semibold text-slate-500">Chọn nhanh:</span>
+              <button type="button" onClick={() => applyQuickGroup(queryType === "job" ? "cloud" : "java", 5)} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600">
+                {queryType === "job" ? "+ Nhóm Cloud / DevOps" : "+ Top 5 CV Java"}
+              </button>
+              <button type="button" onClick={() => applyQuickGroup(queryType === "job" ? "backend" : "data", 5)} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600">
+                {queryType === "job" ? "+ Nhóm Backend" : "+ Top 5 CV Data"}
+              </button>
+              <button type="button" onClick={() => setSelectedEntityIds(entityOptions.slice(0, 10).map((item) => item.id))} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                Chọn 10 mục đầu
+              </button>
             </div>
 
             <button
@@ -185,12 +316,12 @@ export default function GraphExplorerPage() {
               {loadingGraph ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Đang truy vấn Cypher Neo4j...
+                  Đang tải dữ liệu...
                 </>
               ) : (
                 <>
                   <Database className="w-3.5 h-3.5" />
-                  Tải Graph từ Neo4j
+                  Tải mạng lưới
                 </>
               )}
             </button>
@@ -202,6 +333,21 @@ export default function GraphExplorerPage() {
               <span>{queryNote}</span>
             </div>
           )}
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <Sliders className="h-3.5 w-3.5 text-blue-600" />
+              Giới hạn hiển thị
+              <select value={maxNodes} onChange={(event) => setMaxNodes(Number(event.target.value))} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-normal">
+                <option value={20}>20 node</option>
+                <option value={50}>50 node</option>
+                <option value={100}>100 node</option>
+                <option value={250}>250 node</option>
+              </select>
+            </label>
+            <span className="text-xs text-slate-400">
+              Đang hiển thị {filteredNodes.length}/{matchingNodes.length} node phù hợp
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -268,7 +414,7 @@ export default function GraphExplorerPage() {
 
           {/* Right: Graph canvas */}
           <div className="flex-1">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" style={{ height: "560px" }}>
+            <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" style={{ height: "560px" }}>
 
               {/* Canvas toolbar */}
               <div className="border-b border-slate-200 px-4 py-2 flex items-center gap-2 bg-slate-50">
@@ -294,6 +440,19 @@ export default function GraphExplorerPage() {
                 links={filteredLinks}
                 onSelectNode={(node) => setSelectedNode(node)}
               />
+              {nodes.length === 0 && !loadingGraph && (
+                <div className="absolute inset-x-0 bottom-0 top-11 flex items-center justify-center bg-white/90 p-6 text-center">
+                  <div className="max-w-sm">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                      <Network className="h-7 w-7" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Bắt đầu khám phá mạng lưới</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      Nhập mã vị trí hoặc mã hồ sơ, sau đó nhấn <strong>Tải mạng lưới</strong> để xem các kỹ năng liên quan.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Node Detail Slide-over panel */}

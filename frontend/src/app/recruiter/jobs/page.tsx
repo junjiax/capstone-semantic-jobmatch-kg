@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Briefcase, RefreshCw, Search, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import apiClient from "@/lib/api";
 
 interface Job {
@@ -15,7 +23,9 @@ interface Job {
 }
 
 export default function RecruiterJobsPage() {
+  const PAGE_SIZE = 20;
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -25,6 +35,7 @@ export default function RecruiterJobsPage() {
     try {
       const response = await apiClient.get("/jd/available");
       setJobs(response.data?.data || []);
+      setCurrentPage(1);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setErrorMsg(axiosErr.response?.data?.detail || "Không thể tải tin tuyển dụng từ backend.");
@@ -36,6 +47,12 @@ export default function RecruiterJobsPage() {
   useEffect(() => {
     void loadJobs();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const visibleJobs = jobs.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -72,17 +89,17 @@ export default function RecruiterJobsPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Tin tuyển dụng</div>
             <div className="mt-2 text-3xl font-bold text-slate-900">{jobs.length}</div>
-            <div className="mt-1 text-xs text-slate-400">Đã nạp từ backend</div>
+            <div className="mt-1 text-xs text-slate-400">Đang có trên hệ thống</div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Thuật toán</div>
-            <div className="mt-2 text-xl font-bold text-violet-700">Hybrid AI + KG</div>
-            <div className="mt-1 text-xs text-slate-400">pgvector + Neo4j</div>
+            <div className="mt-2 text-xl font-bold text-violet-700">Tìm kiếm thông minh</div>
+            <div className="mt-1 text-xs text-slate-400">Ưu tiên hồ sơ phù hợp</div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="text-xs font-semibold text-slate-500">Thao tác</div>
             <div className="mt-2 text-xl font-bold text-emerald-700">Sàng lọc ứng viên</div>
-            <div className="mt-1 text-xs text-slate-400">Dùng API Hybrid Search</div>
+            <div className="mt-1 text-xs text-slate-400">Sẵn sàng tìm kiếm</div>
           </div>
         </div>
 
@@ -103,7 +120,7 @@ export default function RecruiterJobsPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {jobs.map((job) => (
+              {visibleJobs.map((job) => (
                 <div key={job.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-slate-900">{job.title}</div>
@@ -120,6 +137,33 @@ export default function RecruiterJobsPage() {
                   </Link>
                 </div>
               ))}
+            </div>
+          )}
+          {!loading && jobs.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+              <span className="text-xs text-slate-500">
+                Trang {currentPage}/{totalPages} · Hiển thị tối đa {PAGE_SIZE} tin mỗi trang
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Sau
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>

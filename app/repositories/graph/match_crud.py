@@ -283,7 +283,7 @@ def hybrid_match_cvs_for_job_graph(
 
         RETURN 
             c.cvId AS cvId,
-            u.fullName AS candidateName,
+            c.title AS candidateTitle,
             u.email AS candidateEmail,
             vectorScore,
             graphSkillScore,
@@ -324,7 +324,7 @@ def hybrid_match_cvs_for_job_graph(
 
         RETURN 
             c.cvId AS cvId,
-            u.fullName AS candidateName,
+            c.title AS candidateTitle,
             u.email AS candidateEmail,
             0.0 AS vectorScore,
             graphSkillScore,

@@ -13,9 +13,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  User,
-  ShieldCheck,
-  Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -53,12 +50,6 @@ export default function LoginPage() {
     } else {
       setErrorMsg(res.error || "Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin.");
     }
-  };
-
-  const fillQuickAccount = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMsg(null);
   };
 
   return (
@@ -158,44 +149,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Logins for Committee / Testers */}
-          <div className="mt-6 pt-5 border-t border-slate-200">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 text-center">
-              Chọn nhanh tài khoản thử nghiệm
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => fillQuickAccount("applicant1@gmail.com", "App@123456")}
-                className="p-2 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-center transition-colors group"
-                title="applicant1@gmail.com / App@123456"
-              >
-                <User className="w-4 h-4 mx-auto text-blue-600 mb-1" />
-                <span className="block text-[11px] font-semibold text-slate-800">Ứng viên</span>
-                <span className="block text-[9px] text-slate-400">applicant1</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickAccount("hr1@cvsystem.com", "Hr@123456")}
-                className="p-2 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 text-center transition-colors group"
-                title="hr1@cvsystem.com / Hr@123456"
-              >
-                <Briefcase className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
-                <span className="block text-[11px] font-semibold text-slate-800">Tuyển dụng</span>
-                <span className="block text-[9px] text-slate-400">hr1</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickAccount("admin@cvsystem.com", "Admin@123456")}
-                className="p-2 rounded-xl border border-slate-200 hover:border-violet-400 hover:bg-violet-50 text-center transition-colors group"
-                title="admin@cvsystem.com / Admin@123456"
-              >
-                <ShieldCheck className="w-4 h-4 mx-auto text-violet-600 mb-1" />
-                <span className="block text-[11px] font-semibold text-slate-800">Admin</span>
-                <span className="block text-[9px] text-slate-400">admin</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer link */}
@@ -209,4 +162,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

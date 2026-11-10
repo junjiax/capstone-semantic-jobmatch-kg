@@ -433,13 +433,6 @@ export default function CandidateUploadPage() {
                   Tiến hành So khớp 1-1
                   <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  href="/candidate/career-matrix"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 font-semibold hover:bg-violet-100 transition-colors text-sm"
-                >
-                  Xem Ma trận 8 Domains
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
               </div>
             </div>
 

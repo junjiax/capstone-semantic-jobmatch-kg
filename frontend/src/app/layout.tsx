@@ -5,9 +5,9 @@ import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Semantic JobMatch KG - Ứng dụng Đồ thị tri thức & Vector Embedding",
+  title: "JobMatch - Kết nối đúng người với đúng cơ hội",
   description:
-    "Hệ thống so khớp kỹ năng và hỗ trợ phát triển nghề nghiệp bằng Knowledge Graph (Neo4j) và Vector Embedding (pgvector) trên ngữ liệu tiếng Việt.",
+    "Nền tảng giúp ứng viên tìm cơ hội phù hợp và nhà tuyển dụng tìm kiếm nhân tài hiệu quả hơn.",
 };
 
 export default function RootLayout({

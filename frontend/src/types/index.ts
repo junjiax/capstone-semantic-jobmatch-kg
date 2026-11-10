@@ -53,60 +53,17 @@ export interface MatchResultResponse {
   explanation: string;
 }
 
-// BÀI TOÁN 2: Ma trận Định hướng Đa miền (1 CV vs Many Domains)
-export interface DomainRanking {
-  rank?: number;
-  domain: string;
-  compatibilityScore: number;
-  skillCoverageRatio: number;
-  matchedSkillsCount?: number;
-  missingSkillsCount?: number;
-  missingSkills?: string[];
-  matchedSkills?: string[];
-  careerGuidance?: string;
-  suggestedJobTitles?: string[];
-  keyStrengths?: string[];
-  keyGaps?: string[];
-}
-
-export interface ExpertiseRanking {
-  rank?: number;
-  expertise: string;
-  domain: string;
-  compatibilityScore: number;
-  skillCoverageRatio: number;
-  matchedSkillsCount: number;
-  missingSkillsCount: number;
-  missingSkills: string[];
-  matchedSkills: string[];
-  careerGuidance?: string;
-}
-
-export interface DomainMatrixData {
-  rows: string[];
-  columns: string[];
-  data: number[][];
-}
-
-export interface DomainGapMatrixResponse {
-  cvId: number;
-  domainMatrix: DomainMatrixData;
-  expertiseMatrix?: DomainMatrixData;
-  domainRankings: DomainRanking[];
-  expertiseRankings?: ExpertiseRanking[];
-}
-
 // BÀI TOÁN 3: Hybrid Candidate Search cho HR
 export interface CandidateSearchResult {
   cvId: number;
-  candidateName?: string;
+  candidateTitle?: string;
   totalScore: number;
   vectorScore: number;
   graphSkillScore: number;
   matchedSkillsCount: number;
   requiredSkillsCount: number;
-  matchedSkills: string[];
-  missingSkills: string[];
+  matchedSkills: Array<string | { name?: string; importance?: number }>;
+  missingSkills: Array<string | { name?: string; importance?: number }>;
   experienceYears?: number;
 }
 
@@ -134,4 +91,3 @@ export interface GraphSyncStats {
   educations: number;
   work_experiences: number;
 }
-

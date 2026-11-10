@@ -22,22 +22,21 @@ const navGroups = [
     label: "Ứng viên",
     items: [
       { href: "/candidate/upload", label: "Upload & Bóc tách CV" },
-      { href: "/candidate/match", label: "So khớp 1-1 (BT1)" },
-      { href: "/candidate/career-matrix", label: "Ma trận nghề nghiệp (BT2)" },
+      { href: "/candidate/match", label: "Đánh giá mức độ phù hợp" },
     ],
   },
   {
     label: "Nhà tuyển dụng",
     items: [
       { href: "/recruiter/jobs", label: "Quản lý JD & Trọng số" },
-      { href: "/recruiter/hybrid-search", label: "Tìm ứng viên (BT3)" },
+      { href: "/recruiter/hybrid-search", label: "Tìm ứng viên tiềm năng" },
     ],
   },
   {
     label: "Admin Lab",
     items: [
-      { href: "/admin/graph-explorer", label: "Neo4j Graph Explorer" },
-      { href: "/admin/system-sync", label: "Bảng điều khiển ETL" },
+      { href: "/admin/graph-explorer", label: "Khám phá dữ liệu" },
+      { href: "/admin/system-sync", label: "Quản trị hệ thống" },
     ],
   },
 ];
@@ -74,7 +73,7 @@ export default function Navbar() {
                 JobMatch KG
               </span>
               <span className="text-[11px] text-slate-500 leading-tight block">
-                Knowledge Graph + pgvector
+                Kết nối việc làm thông minh
               </span>
             </div>
           </Link>
@@ -131,7 +130,7 @@ export default function Navbar() {
               }`}
             >
               <Search className="w-3.5 h-3.5 text-blue-600" />
-              Tìm kiếm Ngữ nghĩa
+              Tìm kiếm thông minh
             </Link>
           </nav>
 

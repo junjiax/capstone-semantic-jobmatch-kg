@@ -10,9 +10,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  CheckCircle2,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -40,6 +38,15 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res.success) {
+      const requestedPath = new URLSearchParams(window.location.search).get("redirect");
+      const redirectPath = requestedPath && requestedPath.startsWith("/")
+        ? requestedPath
+        : null;
+      if (redirectPath) {
+        sessionStorage.removeItem("post_login_redirect");
+        router.push(redirectPath);
+        return;
+      }
       if (email.includes("hr") || email.includes("recruiter")) {
         router.push("/recruiter/jobs");
       } else if (email.includes("admin")) {
@@ -70,7 +77,7 @@ export default function LoginPage() {
             Đăng nhập vào hệ thống
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Ứng dụng Đồ thị tri thức & Vector Embedding
+            Đăng nhập để quản lý hồ sơ và tìm cơ hội phù hợp
           </p>
         </div>
 
@@ -85,12 +92,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Địa chỉ Email
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -103,19 +111,15 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-slate-700">
+                <label htmlFor="login-password" className="text-xs font-semibold text-slate-700">
                   Mật khẩu
                 </label>
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Quên mật khẩu?
-                </Link>
+                <span className="text-xs text-slate-400">Cần hỗ trợ? Liên hệ quản trị viên</span>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  id="login-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -125,6 +129,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >

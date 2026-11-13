@@ -11,7 +11,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 interface Job {
   id: number;
@@ -37,6 +37,10 @@ export default function RecruiterJobsPage() {
       setJobs(response.data?.data || []);
       setCurrentPage(1);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) {
+        setLoading(false);
+        return;
+      }
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setErrorMsg(axiosErr.response?.data?.detail || "Không thể tải tin tuyển dụng từ backend.");
     } finally {

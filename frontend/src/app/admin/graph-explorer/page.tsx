@@ -11,15 +11,13 @@ import {
   Sparkles,
   X,
   Database,
-  Briefcase,
-  User,
   RefreshCw,
   Sliders,
   Check,
 } from "lucide-react";
 import GraphCanvas from "@/components/visualizers/GraphCanvas";
 import { GraphNode, GraphLink } from "@/types";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 const NODE_TYPE_COLORS: Record<string, { dot: string; badge: string; text: string }> = {
   Domain: { dot: "bg-blue-500", badge: "bg-blue-100 text-blue-700", text: "Lĩnh vực" },
@@ -74,12 +72,24 @@ export default function GraphExplorerPage() {
         setSelectedEntityIds((current) => current.filter((id) =>
           items.some((item: { id: number }) => item.id === id),
         ).slice(0, 10));
-      } catch {
+      } catch (error: unknown) {
         setEntityOptions([]);
+        if (!isUnauthorizedError(error)) {
+          setSelectedEntityIds([]);
+          setQueryNote("Không thể tải danh sách dữ liệu. Vui lòng thử lại sau.");
+        }
       }
     };
     void loadEntityOptions();
   }, [queryType]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectorOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
 
   const toggleType = (type: string) => {
     setVisibleTypes((prev) => {
@@ -147,7 +157,8 @@ export default function GraphExplorerPage() {
         setLinks(nextLinks);
         setQueryNote(`Đã tải ${ids.length} CV và ${nextNodes.filter((node) => node.type === "Skill").length} kỹ năng.`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       console.warn("Neo4j live query failed:", err);
       setQueryNote("Không thể tải dữ liệu đồ thị thực tế. Vui lòng kiểm tra Neo4j và quyền truy cập.");
     } finally {
@@ -217,7 +228,9 @@ export default function GraphExplorerPage() {
               <span className="text-xs font-bold text-slate-600 uppercase">Chế độ xem:</span>
               <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
                 <button
+                  type="button"
                   onClick={() => setQueryType("job")}
+                  aria-pressed={queryType === "job"}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                     queryType === "job" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
@@ -225,7 +238,9 @@ export default function GraphExplorerPage() {
                   Kỹ năng của vị trí
                 </button>
                 <button
+                  type="button"
                   onClick={() => setQueryType("cv")}
+                  aria-pressed={queryType === "cv"}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                     queryType === "cv" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
                   }`}
@@ -238,23 +253,40 @@ export default function GraphExplorerPage() {
                 <span className="mb-1 block text-xs font-semibold text-slate-500">
                   {queryType === "job" ? "Chọn vị trí" : "Chọn CV"} (tối đa 10)
                 </span>
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectorOpen((open) => !open)}
-                  className="flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-left"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectorOpen((open) => !open);
+                    }
+                  }}
+                  aria-expanded={selectorOpen}
+                  aria-haspopup="listbox"
+                  aria-label={`Chọn ${queryType === "job" ? "vị trí" : "hồ sơ"} để khám phá`}
+                  className="flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {selectedEntityIds.length ? selectedEntityIds.map((id) => {
                     const item = entityOptions.find((option) => option.id === id);
                     return (
                       <span key={id} className="inline-flex max-w-36 items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">
                         <span className="truncate">{item?.label || `#${id}`}</span>
-                        <X className="h-3 w-3 shrink-0" onClick={(event) => { event.stopPropagation(); toggleEntity(id); }} />
+                        <button
+                          type="button"
+                          aria-label={`Bỏ chọn ${item?.label || `mục ${id}`}`}
+                          className="rounded-full hover:bg-blue-200"
+                          onClick={(event) => { event.stopPropagation(); toggleEntity(id); }}
+                        >
+                          <X className="h-3 w-3 shrink-0" />
+                        </button>
                       </span>
                     );
                   }) : <span className="px-1 text-xs text-slate-400">Chọn dữ liệu...</span>}
-                </button>
+                </div>
                 {selectorOpen && (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <div role="listbox" aria-label="Danh sách dữ liệu" className="absolute left-0 top-full z-30 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                     <div className="mb-2 flex items-center justify-between px-1">
                       <span className="text-[11px] font-semibold text-slate-500">
                         Đã chọn {selectedEntityIds.length}/10
@@ -271,6 +303,7 @@ export default function GraphExplorerPage() {
                       autoFocus
                       value={entitySearch}
                       onChange={(event) => setEntitySearch(event.target.value)}
+                      aria-label="Tìm dữ liệu theo tên, lĩnh vực hoặc kỹ năng"
                       placeholder="Tìm theo tên, domain hoặc kỹ năng..."
                       className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -279,6 +312,8 @@ export default function GraphExplorerPage() {
                         <button
                           key={item.id}
                           type="button"
+                          role="option"
+                          aria-selected={selectedEntityIds.includes(item.id)}
                           onClick={() => toggleEntity(item.id)}
                           className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-blue-50"
                         >
@@ -328,7 +363,7 @@ export default function GraphExplorerPage() {
           </div>
 
           {queryNote && (
-            <div className="mt-3 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2">
+            <div role="status" aria-live="polite" className="mt-3 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
               <span>{queryNote}</span>
             </div>
@@ -344,7 +379,7 @@ export default function GraphExplorerPage() {
                 <option value={250}>250 node</option>
               </select>
             </label>
-            <span className="text-xs text-slate-400">
+            <span role="status" className="text-xs text-slate-400">
               Đang hiển thị {filteredNodes.length}/{matchingNodes.length} node phù hợp
             </span>
           </div>
@@ -364,6 +399,7 @@ export default function GraphExplorerPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Tìm node trong mạng lưới"
                   placeholder="Nhập tên node..."
                   className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -377,7 +413,9 @@ export default function GraphExplorerPage() {
                 {Object.entries(NODE_TYPE_COLORS).map(([type, cfg]) => (
                   <button
                     key={type}
+                    type="button"
                     onClick={() => toggleType(type)}
+                    aria-pressed={visibleTypes.has(type)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                       visibleTypes.has(type)
                         ? "bg-slate-50 border border-slate-200"
@@ -423,13 +461,13 @@ export default function GraphExplorerPage() {
                   Cytoscape.js — Kéo để di chuyển · Scroll để zoom · Click node để xem chi tiết
                 </div>
                 <div className="ml-auto flex items-center gap-1">
-                  <button className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
+                  <button type="button" aria-label="Phóng to mạng lưới" title="Phóng to" className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
                     <ZoomIn className="h-4 w-4" />
                   </button>
-                  <button className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
+                  <button type="button" aria-label="Thu nhỏ mạng lưới" title="Thu nhỏ" className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
                     <ZoomOut className="h-4 w-4" />
                   </button>
-                  <button className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
+                  <button type="button" aria-label="Đặt lại kích thước mạng lưới" title="Đặt lại kích thước" className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors">
                     <Maximize2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -448,7 +486,7 @@ export default function GraphExplorerPage() {
                     </div>
                     <h3 className="text-base font-bold text-slate-900">Bắt đầu khám phá mạng lưới</h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                      Nhập mã vị trí hoặc mã hồ sơ, sau đó nhấn <strong>Tải mạng lưới</strong> để xem các kỹ năng liên quan.
+                      Chọn một hoặc nhiều {queryType === "job" ? "vị trí" : "hồ sơ"} ở phía trên, sau đó nhấn <strong>Tải mạng lưới</strong> để xem các kỹ năng liên quan.
                     </p>
                   </div>
                 </div>

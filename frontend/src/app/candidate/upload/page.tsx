@@ -18,7 +18,7 @@ import {
   GraduationCap,
   Briefcase,
 } from "lucide-react";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 import { useAuth } from "@/context/AuthContext";
 
@@ -74,6 +74,7 @@ export default function CandidateUploadPage() {
       setExtractedData(data);
       localStorage.setItem("last_cv_id", String(data.id));
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setExtractedData(null);
       alert(axiosErr.response?.data?.detail || "Không thể tải CV lên. Vui lòng thử lại.");
@@ -157,6 +158,7 @@ export default function CandidateUploadPage() {
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       alert(axiosErr.response?.data?.detail || "Không thể lưu thay đổi hồ sơ.");
     }

@@ -83,6 +83,9 @@ export default function Navbar() {
             {navGroups.map((group) => (
               <div key={group.label} className="relative">
                 <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={openGroup === group.label}
                   onClick={() =>
                     setOpenGroup(openGroup === group.label ? null : group.label)
                   }
@@ -177,6 +180,9 @@ export default function Navbar() {
 
           {/* Mobile toggle */}
           <button
+            type="button"
+            aria-label={mobileOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
+            aria-expanded={mobileOpen}
             className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
           >

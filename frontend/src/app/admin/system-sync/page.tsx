@@ -18,7 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { GraphSyncStats } from "@/types";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 const INITIAL_STATS: GraphSyncStats = {
   users: 0,
@@ -51,6 +51,7 @@ export default function SystemSyncPage() {
       const res = await apiClient.get("/graph/stats");
       setStats((prev) => ({ ...prev, ...(res.data?.data || {}) }));
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       addLog(`⚠️ Không tải được thống kê PostgreSQL: ${axiosErr.response?.data?.detail || "Vui lòng kiểm tra quyền Admin."}`);
     }
@@ -68,6 +69,7 @@ export default function SystemSyncPage() {
       addLog(`✅ Khởi tạo Schema Neo4j thành công!`);
       addLog(`Chi tiết phản hồi API: ${JSON.stringify(res.data?.data || res.data || "Hoàn thành")}`);
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       addLog(`❌ Lỗi API khi khởi tạo Schema: ${axiosErr.response?.data?.detail || "Không thể kết nối với backend FastAPI."}`);
     } finally {
@@ -86,6 +88,7 @@ export default function SystemSyncPage() {
       addLog(`✅ Đồng bộ thành công: ${d.cvs ?? 0} CVs, ${d.jobs ?? 0} Jobs, ${d.skills ?? 0} Skills.`);
       addLog("🎉 Toàn bộ dữ liệu PostgreSQL đã được upsert lên Neo4j Knowledge Graph.");
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       addLog(`❌ Lỗi API khi đồng bộ ETL: ${axiosErr.response?.data?.detail || "Không thể kết nối với backend FastAPI."}`);
     } finally {

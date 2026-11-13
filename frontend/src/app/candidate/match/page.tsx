@@ -22,7 +22,7 @@ import {
 import RadarChart5Aspects from "@/components/visualizers/RadarChart5Aspects";
 import SkillGapBadge from "@/components/visualizers/SkillGapBadge";
 import { MatchResultResponse } from "@/types";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 // Circular score ring
 function CircularScore({ value }: { value: number }) {
@@ -133,8 +133,10 @@ export default function MatchDetailPage() {
         setJdId(nextJobs[0]?.id || 0);
         setSelectedProfileIds(nextProfiles.slice(0, 1).map((item: { id: number }) => item.id));
         setSelectedJobIds(nextJobs.slice(0, 1).map((item: { id: number }) => item.id));
-      } catch {
-        setErrorMsg("Không thể tải danh sách CV/JD từ backend.");
+      } catch (error: unknown) {
+        if (!isUnauthorizedError(error)) {
+          setErrorMsg("Không thể tải danh sách CV/JD từ backend.");
+        }
       } finally {
         setOptionsLoading(false);
       }
@@ -178,6 +180,7 @@ export default function MatchDetailPage() {
       );
       setMatrixResults(Object.fromEntries(results.map((result) => [result.key, result.score])));
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setErrorMsg(axiosErr.response?.data?.detail || "Không thể tạo bảng so sánh. Vui lòng kiểm tra quyền truy cập và dữ liệu.");
     } finally {
@@ -196,8 +199,10 @@ export default function MatchDetailPage() {
         missing: (data?.missing_skills || []).map((item: { skill_name?: string }) => item.skill_name || ""),
         loading: false,
       });
-    } catch {
-      setCellDetail({ matched: [], missing: [], loading: false });
+    } catch (error: unknown) {
+      if (!isUnauthorizedError(error)) {
+        setCellDetail({ matched: [], missing: [], loading: false });
+      }
     }
   };
 
@@ -265,6 +270,7 @@ export default function MatchDetailPage() {
           return;
         }
       } catch (smartErr) {
+        if (isUnauthorizedError(smartErr)) throw smartErr;
         // Fallback sang endpoint POST /graph/match/{cv_id}/{jd_id}
       }
 
@@ -279,6 +285,7 @@ export default function MatchDetailPage() {
         setMatchData(null);
       }
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       const detail = axiosErr.response?.data?.detail;
       setErrorMsg(
@@ -349,6 +356,7 @@ export default function MatchDetailPage() {
           return;
         }
       } catch (sgErr) {
+        if (isUnauthorizedError(sgErr)) throw sgErr;
         // Fallback sang endpoint cũ
       }
 
@@ -380,6 +388,7 @@ export default function MatchDetailPage() {
         setErrorMsg("Không tìm thấy dữ liệu Skill Gap cho cặp ID này.");
       }
     } catch (err: unknown) {
+      if (isUnauthorizedError(err)) return;
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       setErrorMsg(
         axiosErr.response?.data?.detail ||

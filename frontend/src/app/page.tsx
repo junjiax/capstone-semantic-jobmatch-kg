@@ -59,12 +59,12 @@ export default function HomePage() {
               JobMatch giúp ứng viên hiểu rõ cơ hội phù hợp và giúp nhà tuyển dụng tìm ra những hồ sơ đáng chú ý nhanh hơn.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/candidate/upload" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+              <Link href="/auth/login?redirect=%2Fcandidate%2Fupload" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
                 <Upload className="h-4 w-4" />
                 Phân tích CV của tôi
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/recruiter/hybrid-search" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700">
+              <Link href="/auth/login?redirect=%2Frecruiter%2Fhybrid-search" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700">
                 <Search className="h-4 w-4" />
                 Tìm ứng viên
               </Link>

@@ -7,15 +7,8 @@ import {
   Sparkles,
   Award,
   Briefcase,
-  Layers,
-  Database,
   ArrowRight,
   RefreshCw,
-  SlidersHorizontal,
-  Sliders,
-  CheckCircle2,
-  ExternalLink,
-  Cpu,
 } from "lucide-react";
 import apiClient from "@/lib/api";
 
@@ -99,20 +92,23 @@ export default function SemanticSearchPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-2">
-            <Cpu className="w-3.5 h-3.5" />
-            Vector Embedding (pgvector 384-dim all-MiniLM-L6-v2)
+            <Sparkles className="w-3.5 h-3.5" />
+            Tìm kiếm theo ngữ cảnh
           </div>
           <h1 className="text-3xl font-bold text-slate-900">
-            Tìm Kiếm Ngữ Nghĩa (Semantic Search)
+            Tìm kiếm thông minh
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Truy xuất tương đồng ngữ nghĩa trong không gian vector cho kỹ năng và yêu cầu công việc tiếng Việt.
+            Mô tả điều bạn đang tìm kiếm bằng ngôn ngữ tự nhiên để nhận được kỹ năng và vị trí phù hợp.
           </p>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200 mb-6 gap-2">
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "skills"}
             onClick={() => {
               setActiveTab("skills");
               setSearched(false);
@@ -127,6 +123,9 @@ export default function SemanticSearchPage() {
             Tìm kiếm Kỹ năng (Semantic Skills)
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "jobs"}
             onClick={() => {
               setActiveTab("jobs");
               setSearched(false);
@@ -239,7 +238,7 @@ export default function SemanticSearchPage() {
           </form>
 
           {errorMsg && (
-            <div className="mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-800">
+            <div role="alert" aria-live="assertive" className="mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-800">
               <strong>Lỗi từ API:</strong> {errorMsg}
             </div>
           )}
@@ -286,6 +285,11 @@ export default function SemanticSearchPage() {
                 })}
               </div>
             )}
+            {activeTab === "skills" && !loading && skillResults.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                Chưa có kỹ năng phù hợp. Hãy thử mô tả rộng hơn hoặc giảm ngưỡng tương đồng.
+              </div>
+            )}
 
             {/* Jobs Results Grid */}
             {activeTab === "jobs" && (
@@ -328,6 +332,11 @@ export default function SemanticSearchPage() {
                 })}
               </div>
             )}
+            {activeTab === "jobs" && !loading && jobResults.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+                Chưa tìm thấy vị trí phù hợp. Hãy thử dùng từ khóa khác.
+              </div>
+            )}
           </div>
         )}
 
@@ -335,4 +344,3 @@ export default function SemanticSearchPage() {
     </div>
   );
 }
-

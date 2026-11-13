@@ -20,7 +20,7 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { CandidateSearchResult } from "@/types";
-import apiClient from "@/lib/api";
+import apiClient, { isUnauthorizedError } from "@/lib/api";
 
 const TOP_K_OPTIONS = [5, 10, 15, 20];
 
@@ -82,7 +82,11 @@ export default function HybridSearchPage() {
       setJobId(items.some((item: { id: number }) => item.id === queryJobId)
         ? queryJobId
         : items[0]?.id || 0);
-    }).catch(() => setErrorMsg("Không thể tải danh sách tin tuyển dụng từ backend."));
+    }).catch((err: unknown) => {
+      if (!isUnauthorizedError(err)) {
+        setErrorMsg("Không thể tải danh sách tin tuyển dụng từ backend.");
+      }
+    });
   }, []);
 
   const handleSearch = async () => {
@@ -106,9 +110,7 @@ export default function HybridSearchPage() {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       if (axiosErr.response?.status === 401) {
-        setErrorMsg(
-          "Yêu cầu quyền HR hoặc Admin để thực hiện tìm kiếm này. Bạn vui lòng Đăng nhập với tài khoản HR (hr1@cvsystem.com / Hr@123456) tại trang Đăng nhập."
-        );
+        return;
       } else {
         setErrorMsg(
           axiosErr.response?.data?.detail ||

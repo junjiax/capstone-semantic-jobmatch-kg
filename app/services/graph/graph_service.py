@@ -136,6 +136,7 @@ def sync_cv_to_graph(db: Session, cv_id: int) -> bool:
     graph_sync.upsert_cv_node(
         cv_id=profile.Id,
         user_id=profile.UserId,
+        title=profile.Title or "",
         summary=profile.CleanText or profile.RawText or "",
         embedding=_profile_vector(profile),
     )
@@ -480,6 +481,15 @@ def hybrid_search_candidates_service(
     # Đảm bảo Job đã lên graph
     sync_job_to_graph(db, job_id)
 
-    return graph_match.hybrid_match_cvs_for_job_graph(
+    results = graph_match.hybrid_match_cvs_for_job_graph(
         job_id=job_id, job_vector=job_vector, top_k=top_k
     )
+    profile_ids = [item.get("cvId") for item in results if item.get("cvId") is not None]
+    titles = dict(
+        db.query(Profile.Id, Profile.Title)
+        .filter(Profile.Id.in_(profile_ids))
+        .all()
+    ) if profile_ids else {}
+    for item in results:
+        item["candidateTitle"] = titles.get(item.get("cvId")) or f"CV #{item.get('cvId')}"
+    return results

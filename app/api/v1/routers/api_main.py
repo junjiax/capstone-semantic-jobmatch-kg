@@ -6,12 +6,16 @@ from app.api.v1.routers.router import (
     semantic_search,
     skill_gap,
     skill_match,
+    profile,
+    jd,
 )
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router.include_router(user.router, prefix="/user", tags=["Users"])
+api_router.include_router(profile.router, prefix="/profile", tags=["Profiles"])
+api_router.include_router(jd.router, prefix="/jd", tags=["Jobs"])
 
 
 """

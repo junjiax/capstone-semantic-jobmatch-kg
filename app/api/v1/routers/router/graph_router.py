@@ -1,17 +1,65 @@
 import logging
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_active_user, require_hr_or_admin
 from app.schemas.response import ResponseSchema
 from app.models.user import User, UserRole
 from app.models.profile import Profile
+from app.models.jd import JD
+from app.models.profile_edu import ProfileEdu
+from app.models.profile_skill import ProfileSkill
+from app.models.profile_work_exp import ProfileWorkExp
+from app.models.jd_skill import JDSkill
 from app.services.graph import graph_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get(
+    "/stats",
+    summary="Thống kê dữ liệu PostgreSQL hiện tại",
+    description="Trả về số lượng bản ghi thực tế dùng cho bảng điều khiển Admin.",
+)
+async def get_system_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_or_admin),
+):
+    skill_names = db.query(ProfileSkill.SkillTitle).filter(
+        ProfileSkill.SkillTitle.isnot(None)
+    ).union(
+        db.query(JDSkill.Title).filter(JDSkill.Title.isnot(None))
+    ).subquery()
+    domain_count = db.query(func.count(func.distinct(ProfileWorkExp.Domain))).filter(
+        ProfileWorkExp.Domain.isnot(None)
+    ).scalar() or 0
+    expertise_count = db.query(func.count(func.distinct(ProfileWorkExp.Expertise))).filter(
+        ProfileWorkExp.Expertise.isnot(None)
+    ).scalar() or 0
+    jd_domain_count = db.query(func.count(func.distinct(JD.Domain))).filter(
+        JD.Domain.isnot(None)
+    ).scalar() or 0
+    jd_expertise_count = db.query(func.count(func.distinct(JD.Expertise))).filter(
+        JD.Expertise.isnot(None)
+    ).scalar() or 0
+    return ResponseSchema(
+        success=True,
+        message="System statistics retrieved",
+        data={
+            "users": db.query(User).count(),
+            "skills": db.query(skill_names).count(),
+            "jobs": db.query(JD).count(),
+            "cvs": db.query(Profile).count(),
+            "domains": max(domain_count, jd_domain_count),
+            "expertises": max(expertise_count, jd_expertise_count),
+            "educations": db.query(ProfileEdu).count(),
+            "work_experiences": db.query(ProfileWorkExp).count(),
+        },
+    )
 
 
 def require_cv_access(
@@ -144,7 +192,7 @@ async def get_cv_education_from_graph(
     cv_id: int,
     current_user: User = Depends(require_cv_access),
 ):
-    from app.crud.graph.match_crud import get_cv_educations_graph
+    from app.repositories.graph.match_crud import get_cv_educations_graph
     educations = get_cv_educations_graph(cv_id)
     return ResponseSchema(
         success=True,
@@ -162,7 +210,7 @@ async def get_cv_experience_from_graph(
     cv_id: int,
     current_user: User = Depends(require_cv_access),
 ):
-    from app.crud.graph.match_crud import get_cv_work_experiences_graph
+    from app.repositories.graph.match_crud import get_cv_work_experiences_graph
     experiences = get_cv_work_experiences_graph(cv_id)
     return ResponseSchema(
         success=True,
@@ -179,7 +227,7 @@ async def get_cv_experience_from_graph(
 async def get_job_education_from_graph(
     job_id: int,
 ):
-    from app.crud.graph.match_crud import get_job_education_requirements_graph
+    from app.repositories.graph.match_crud import get_job_education_requirements_graph
     requirements = get_job_education_requirements_graph(job_id)
     return ResponseSchema(
         success=True,
@@ -271,5 +319,3 @@ async def get_domain_matrix_gap(
         message=f"Domain and expertise correlation matrix generated for CV {cv_id}",
         data=matrix_res
     )
-
-

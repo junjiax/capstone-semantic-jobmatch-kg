@@ -1,10 +1,10 @@
-import json
+﻿import json
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from app.data.CVs.transformation.main import (
+from app.dataset.CVs.transformation.main import (
     chunk_text,
     parse_profiles,
     transform_file,

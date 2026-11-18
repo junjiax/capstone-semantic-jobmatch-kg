@@ -1,8 +1,9 @@
-import pytest
+﻿import pytest
 from google import genai
 from app.core.config import get_settings
 
 
+@pytest.mark.external
 def test_gemini_client_smoke():
     """Kiểm tra gọi Gemini API nếu có key cấu hình trong .env"""
     settings = get_settings()

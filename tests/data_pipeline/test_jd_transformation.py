@@ -1,12 +1,12 @@
-import errno
+﻿import errno
 import json
 from pathlib import Path
 from typing import Any, Dict, IO, List
 
 import pytest
 
-from app.data.JDs.transformation import main as transformation
-from app.data.JDs.transformation.main import clean_extract
+from app.dataset.JDs.transformation import main as transformation
+from app.dataset.JDs.transformation.main import clean_extract
 
 
 def test_clean_extract_returns_only_original_phrases_and_assigns_sections():

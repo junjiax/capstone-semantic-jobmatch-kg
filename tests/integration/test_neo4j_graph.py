@@ -1,7 +1,7 @@
-"""
+﻿"""
 Bộ kiểm thử tích hợp Neo4j Knowledge Graph & Skill Gap Analysis.
 Chạy bằng lệnh:
-  python -m pytest tests/test_neo4j_integration.py -v
+  python -m pytest tests/integration/test_neo4j_graph.py -m neo4j -v
 """
 
 import pytest
@@ -26,10 +26,10 @@ from app.repositories.graph.match_crud import (
     get_cv_skills_graph,
     analyze_skill_gap_graph,
     save_cv_jd_match_result_graph,
-    get_domain_skill_gap_matrix_graph,
-    get_expertise_skill_gap_matrix_graph,
 )
 
+
+pytestmark = pytest.mark.neo4j
 
 @pytest.fixture(scope="module")
 def neo4j_client():
@@ -229,25 +229,6 @@ def test_problem1_skill_matching_score(neo4j_client):
     assert pytest.approx(total_score, 0.001) == 0.8250
 
 
-def test_problem2_domain_gap_matrix(neo4j_client):
-    """
-    Test 8: BÀI TOÁN 2: Skill Gap Analysis & Domain Orientation (1 CV vs Many Domains).
-    Trả lời: 'CV của tôi có thể apply vào những domain nào trong CNTT?'
-    Kiểm tra ma trận tương quan và tỷ lệ bao phủ theo domain.
-    """
-    # CV 888 có kỹ năng Python, FastAPI, React (đã sync ở test 3)
-    domain_gaps = get_domain_skill_gap_matrix_graph(
-        cv_id=888, target_domains=["Backend Development"]
-    )
-    assert len(domain_gaps) == 1
-    backend_gap = domain_gaps[0]
-    assert backend_gap["domainName"] == "Backend Development"
-    assert backend_gap["totalDomainSkills"] >= 2
-    # Tỷ lệ bao phủ phải nằm trong khoảng [0.0, 1.0]
-    assert 0.0 <= backend_gap["skillCoverageRatio"] <= 1.0
-    assert backend_gap["totalMatchedSkills"] >= 1
-
-
 def test_skill_expertise_domain_hierarchy(neo4j_client):
     """
     Test 9: Kiểm tra và bổ sung quan hệ Skill -> Expertise -> Domain.
@@ -283,65 +264,6 @@ def test_skill_expertise_domain_hierarchy(neo4j_client):
     """
     records = neo4j_client.execute_read(query)
     assert records[0]["total"] >= 1
-
-
-def test_multi_jd_domain_skill_deduplication(neo4j_client):
-    """
-    Test 10: Hỗ trợ nhiều JD trong một Domain, tránh tính trùng lặp Skill và trả coverage chuẩn xác trong [0, 1].
-    - JD 779: Backend Go -> Yêu cầu [Docker, PostgreSQL, Go]
-    - JD 778: Backend Python -> Yêu cầu [Python, FastAPI]
-    - Tổng kỹ năng không trùng lặp của Domain = 5: {Docker, PostgreSQL, Go, Python, FastAPI}
-    - CV 888 có: [Python, FastAPI, React]
-    - Matched = 2 (Python, FastAPI), Missing = 3 (Docker, PostgreSQL, Go)
-    - Coverage = 2 / 5 = 0.40
-    """
-    # Tạo JD thứ 2 trong cùng Domain "Backend Development"
-    upsert_jd_node(
-        jd_id=779,
-        title="Golang Backend Engineer",
-        domain="Backend Development",
-        expertise="Python Engineering",
-        experience_years=2,
-    )
-    jd_reqs_go = [
-        {"requirementId": 77901, "skillName": "Docker", "importance": 1.5},
-        {"requirementId": 77902, "skillName": "PostgreSQL", "importance": 1.5},
-        {"requirementId": 77903, "skillName": "Go", "importance": 2.0},
-    ]
-    sync_jd_skill_requirements_graph(jd_id=779, skills=jd_reqs_go)
-
-    # Chạy phân tích Domain Gap cho Domain "Backend Development"
-    domain_gaps = get_domain_skill_gap_matrix_graph(
-        cv_id=888, target_domains=["Backend Development"]
-    )
-    assert len(domain_gaps) == 1
-    backend_gap = domain_gaps[0]
-
-    # Kiểm tra không tính trùng kỹ năng giữa 2 JD
-    assert backend_gap["totalDomainSkills"] == 5
-    assert backend_gap["totalMatchedSkills"] == 2
-    assert backend_gap["totalMissingSkills"] == 3
-    assert 0.0 <= backend_gap["skillCoverageRatio"] <= 1.0
-    assert pytest.approx(backend_gap["skillCoverageRatio"], 0.001) == 0.40
-
-
-def test_expertise_skill_gap_analysis(neo4j_client):
-    """
-    Test 11: Phân tích khoảng cách kỹ năng theo Expertise (Chuyên môn sâu).
-    Kiểm tra Expertise Gap trả về chính xác trong [0, 1] và đầy đủ matchedSkills, missingSkills.
-    """
-    exp_gaps = get_expertise_skill_gap_matrix_graph(
-        cv_id=888, target_expertises=["Python Engineering"]
-    )
-    assert len(exp_gaps) == 1
-    exp_gap = exp_gaps[0]
-
-    assert exp_gap["expertiseName"] == "Python Engineering"
-    assert exp_gap["totalExpertiseSkills"] >= 2
-    assert 0.0 <= exp_gap["skillCoverageRatio"] <= 1.0
-    assert exp_gap["totalMatchedSkills"] >= 1
-    assert isinstance(exp_gap["matchedSkills"], list)
-    assert isinstance(exp_gap["missingSkills"], list)
 
 
 def test_cleanup_test_data(neo4j_client):

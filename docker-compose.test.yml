@@ -1,0 +1,70 @@
+# Disposable test environment, fully separate from docker-compose.yml (dev data).
+#   docker compose -f docker-compose.test.yml up -d --wait postgres-test
+#   docker compose -f docker-compose.test.yml --profile graph up -d --wait neo4j-test
+#   docker compose -f docker-compose.test.yml --profile api up -d --build api-test
+#   docker compose -f docker-compose.test.yml --profile graph --profile api down -v
+name: jobmatch-test
+
+services:
+  postgres-test:
+    image: ankane/pgvector
+    environment:
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: jobmatch_test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  neo4j-test:
+    image: neo4j:5.26-community
+    profiles: ["graph"]
+    ports:
+      - "17474:7474"
+      - "17687:7687"
+    environment:
+      - NEO4J_AUTH=${TEST_NEO4J_AUTH:-neo4j/test-password-123}
+      - NEO4J_PLUGINS=["apoc"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  api-test:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    ports:
+      - "8081:8080"
+    environment:
+      ENVIRONMENT: test
+      SECRET_KEY: ${TEST_SECRET_KEY:-test-secret-key-not-for-production}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_SERVER_DOCKER: postgres-test
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: jobmatch_test
+      GEMINI_API_KEY: ""
+      NEO4J_URI: bolt://neo4j-test:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${TEST_NEO4J_PASSWORD:-test-password-123}
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - python -m scripts.upgrade_current_schema && uvicorn app.main:app --host 0.0.0.0 --port 8080

@@ -33,7 +33,7 @@ def search_skills_semantic(
         for skill, sim in profile_skills:
             items.append(
                 SkillSearchResultItem(
-                    id=skill.id,
+                    id=skill.Id,
                     title=skill.SkillTitle,
                     similarity=sim,
                     source="PROFILE_SKILL",
@@ -49,7 +49,7 @@ def search_skills_semantic(
         for skill, sim in jd_skills:
             items.append(
                 SkillSearchResultItem(
-                    id=skill.id,
+                    id=skill.Id,
                     title=skill.Title,
                     similarity=sim,
                     source="JD_SKILL",
@@ -83,7 +83,7 @@ def search_job_requirements_semantic(
 
     items = [
         JobRequirementSearchResultItem(
-            jd_id=jd.id,
+            jd_id=jd.Id,
             title=jd.Title,
             domain=jd.Domain,
             expertise=jd.Expertise,

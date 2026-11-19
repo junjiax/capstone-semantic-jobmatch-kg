@@ -1,0 +1,368 @@
+{
+  "config": {
+    "date_utc": "2026-11-19T04:02:08+00:00",
+    "git": {
+      "commit": "2987a79011b81b37cbe0411d1cc425f2fe95f62b",
+      "dirty": true,
+      "dirty_files": 2
+    },
+    "python_executable": "python.exe",
+    "versions": {
+      "python": "3.11.8",
+      "numpy": "2.4.1",
+      "torch": "2.10.0+cpu",
+      "sentence_transformers": "5.2.2"
+    },
+    "os": "Windows 10 (10.0.26300)",
+    "cpu": "11th Gen Intel(R) Core(TM) i5-11300H @ 3.10GHz",
+    "cpu_count": 8,
+    "model_requested": "sentence-transformers/all-MiniLM-L6-v2",
+    "label_file_sha1": {
+      "pairs.csv": "859221a1f857765b9cdd33db241fd071e8e6f338",
+      "skills_gold.jsonl": "1abc9185294f1650ac21fa0fc51e6cb673c0bea1",
+      "gap_gold.jsonl": "01904ac546c67d4f4fed9eaa9fe02b061c6fe217",
+      "ANNOTATION_GUIDELINE.md": "628cf249fdad6d29bde5b88c88894934460974a8"
+    },
+    "service_probes": {
+      "postgres_5432": {
+        "host": "127.0.0.1",
+        "port": 5432,
+        "reachable": false
+      },
+      "postgres_55432": {
+        "host": "127.0.0.1",
+        "port": 55432,
+        "reachable": false
+      },
+      "neo4j_7687": {
+        "host": "127.0.0.1",
+        "port": 7687,
+        "reachable": false
+      }
+    },
+    "env_guards": {
+      "HF_HUB_OFFLINE": "1",
+      "GEMINI_API_KEY": "<empty>",
+      "NEO4J_URI": "unreachable-by-design"
+    },
+    "ram_gb": 15.8,
+    "repeats": 30,
+    "warmup": 5,
+    "seed": 0,
+    "model": {
+      "status": "ok",
+      "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+      "device": "cpu",
+      "embedding_dim": 384
+    },
+    "torch_threads": 4,
+    "model_cold_load_ms": 400.1,
+    "text_stats_chars": {
+      "sample_cv": 2418,
+      "sample_jd": 2610,
+      "skill_pool": 505
+    }
+  },
+  "rows": [
+    {
+      "stage": "embedding",
+      "case": "single skill (1 short string)",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 8.709,
+      "p50_ms": 8.561,
+      "p95_ms": 9.981,
+      "min_ms": 7.116,
+      "max_ms": 11.348,
+      "note": ""
+    },
+    {
+      "stage": "embedding",
+      "case": "CV text (1 document)",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 47.911,
+      "p50_ms": 47.567,
+      "p95_ms": 55.076,
+      "min_ms": 41.195,
+      "max_ms": 55.171,
+      "note": "cycles over 10 CVs; model truncates at its max sequence length"
+    },
+    {
+      "stage": "embedding",
+      "case": "JD text (1 document)",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 43.281,
+      "p50_ms": 44.157,
+      "p95_ms": 56.608,
+      "min_ms": 31.597,
+      "max_ms": 60.102,
+      "note": "cycles over 10 JDs"
+    },
+    {
+      "stage": "embedding",
+      "case": "batch of 32 skills (encode_batch)",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 42.43,
+      "p50_ms": 42.653,
+      "p95_ms": 46.265,
+      "min_ms": 37.75,
+      "max_ms": 46.419,
+      "note": ""
+    },
+    {
+      "stage": "vector_search",
+      "case": "N=69 real JD embeddings",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 0.014,
+      "p50_ms": 0.014,
+      "p95_ms": 0.014,
+      "min_ms": 0.013,
+      "max_ms": 0.018,
+      "note": "in-memory numpy cosine top-10 (stand-in, NOT pgvector)"
+    },
+    {
+      "stage": "vector_search",
+      "case": "N=300 real CV embeddings",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 0.022,
+      "p50_ms": 0.021,
+      "p95_ms": 0.023,
+      "min_ms": 0.021,
+      "max_ms": 0.032,
+      "note": "in-memory numpy cosine top-10 (stand-in, NOT pgvector)"
+    },
+    {
+      "stage": "vector_search",
+      "case": "N=1000 synthetic random unit vectors",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 0.052,
+      "p50_ms": 0.045,
+      "p95_ms": 0.102,
+      "min_ms": 0.044,
+      "max_ms": 0.162,
+      "note": "in-memory numpy cosine top-10 (stand-in, NOT pgvector); synthetic vectors"
+    },
+    {
+      "stage": "vector_search",
+      "case": "N=5000 synthetic random unit vectors",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 0.269,
+      "p50_ms": 0.19,
+      "p95_ms": 0.48,
+      "min_ms": 0.16,
+      "max_ms": 1.658,
+      "note": "in-memory numpy cosine top-10 (stand-in, NOT pgvector); synthetic vectors"
+    },
+    {
+      "stage": "vector_search",
+      "case": "N=20000 synthetic random unit vectors",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 1.202,
+      "p50_ms": 0.997,
+      "p95_ms": 2.31,
+      "min_ms": 0.847,
+      "max_ms": 2.321,
+      "note": "in-memory numpy cosine top-10 (stand-in, NOT pgvector); synthetic vectors"
+    },
+    {
+      "stage": "vector_search",
+      "case": "pgvector ORDER BY cosine_distance (app/repositories/postgres/semantic_search.py)",
+      "status": "skipped",
+      "n": "",
+      "mean_ms": "",
+      "p50_ms": "",
+      "p95_ms": "",
+      "min_ms": "",
+      "max_ms": "",
+      "note": "Postgres/pgvector not reachable on localhost (TCP probe)"
+    },
+    {
+      "stage": "matching",
+      "case": "calculate_cv_jd_matching (10 pairs, cycled)",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 88.133,
+      "p50_ms": 86.546,
+      "p95_ms": 104.097,
+      "min_ms": 74.836,
+      "max_ms": 105.509,
+      "note": "stub DB session, graph writes patched to no-op; includes embedding of CV and JD text"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "5 candidate x 5 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 98.556,
+      "p50_ms": 94.809,
+      "p95_ms": 114.872,
+      "min_ms": 88.723,
+      "max_ms": 125.551,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "5 candidate x 10 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 140.232,
+      "p50_ms": 138.897,
+      "p95_ms": 154.15,
+      "min_ms": 132.062,
+      "max_ms": 159.648,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "5 candidate x 20 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 246.804,
+      "p50_ms": 234.516,
+      "p95_ms": 311.919,
+      "min_ms": 224.549,
+      "max_ms": 374.255,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "10 candidate x 5 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 153.17,
+      "p50_ms": 152.759,
+      "p95_ms": 169.669,
+      "min_ms": 135.053,
+      "max_ms": 178.914,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "10 candidate x 10 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 214.162,
+      "p50_ms": 214.99,
+      "p95_ms": 241.179,
+      "min_ms": 183.783,
+      "max_ms": 245.966,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "10 candidate x 20 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 299.431,
+      "p50_ms": 294.845,
+      "p95_ms": 342.496,
+      "min_ms": 280.52,
+      "max_ms": 343.628,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "20 candidate x 5 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 255.78,
+      "p50_ms": 231.83,
+      "p95_ms": 376.126,
+      "min_ms": 224.023,
+      "max_ms": 563.451,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "20 candidate x 10 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 287.774,
+      "p50_ms": 286.004,
+      "p95_ms": 297.845,
+      "min_ms": 273.777,
+      "max_ms": 302.188,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "20 candidate x 20 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 402.148,
+      "p50_ms": 401.673,
+      "p95_ms": 425.352,
+      "min_ms": 389.017,
+      "max_ms": 425.547,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "50 candidate x 5 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 510.306,
+      "p50_ms": 507.253,
+      "p95_ms": 535.459,
+      "min_ms": 492.041,
+      "max_ms": 581.81,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "50 candidate x 10 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 577.237,
+      "p50_ms": 575.19,
+      "p95_ms": 598.466,
+      "min_ms": 565.72,
+      "max_ms": 604.449,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "skill_gap",
+      "case": "50 candidate x 20 required skills",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 731.264,
+      "p50_ms": 721.877,
+      "p95_ms": 769.177,
+      "min_ms": 694.207,
+      "max_ms": 927.164,
+      "note": "analyze_skill_gap_service(db=None); skills sampled from gold lists"
+    },
+    {
+      "stage": "graph_query",
+      "case": "analyze_skill_gap_graph / hybrid graph match (Neo4j)",
+      "status": "skipped",
+      "n": "",
+      "mean_ms": "",
+      "p50_ms": "",
+      "p95_ms": "",
+      "min_ms": "",
+      "max_ms": "",
+      "note": "Neo4j not reachable on localhost (TCP probe)"
+    },
+    {
+      "stage": "end_to_end",
+      "case": "CV -> encode -> top-10 of 69 JDs (in-memory) -> match top 3 -> gap top 1",
+      "status": "ok",
+      "n": 30,
+      "mean_ms": 584.579,
+      "p50_ms": 523.357,
+      "p95_ms": 913.378,
+      "min_ms": 391.748,
+      "max_ms": 1203.447,
+      "note": "excludes DB and graph; vector search is the in-memory stand-in"
+    }
+  ]
+}

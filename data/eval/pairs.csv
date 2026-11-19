@@ -1,0 +1,41 @@
+pair_id,jd_id,cv_id,relevance,jd_lang,cv_lang,annotator,human_verified,notes
+p01,jd-18,2715b627-a846-45e2-8db3-0a68ea3ed2b5,2,en,en,ai-agent,false,"frontend dev, React/Angular/Redux/REST; Next.js ~ SSR"
+p02,jd-18,18ffd2a7-41ed-400f-9186-33093ad5a153,1,en,en,ai-agent,false,frontend dev on Vue not React; no Redux/Webpack evidence
+p03,jd-18,06b0af43-37e0-4647-afd2-a1bc530021ac,1,en,vi,ai-agent,false,game dev history then React frontend; sparse CV
+p04,jd-18,38343f5f-0209-4e3b-9b57-4e695cb705bd,1,en,en,ai-agent,false,Angular frontend dev; not React
+p05,jd-18,8c7f78b7-9e50-47f3-aeee-b911939961f4,0,en,en,ai-agent,false,game/Flash developer and CEO; no frontend framework
+p06,jd-15,0ee9b9c9-39b2-4270-9f55-183d0072909a,2,en,en,ai-agent,false,Java Spring Boot full stack with Angular instead of Vue
+p07,jd-15,6901e2b5-50e8-4c67-bacb-45ec4255ca8f,1,en,vi,ai-agent,false,"Java/Spring Boot dev but no Vue, REST, Postgres evidence"
+p08,jd-15,003ada45-7271-4e1d-8d61-6f5b5542b3d7,1,en,en,ai-agent,false,PHP/React full stack; different backend stack
+p09,jd-15,76894924-b1a9-46cc-a61b-3fd73b76abde,1,en,vi,ai-agent,false,JS full stack (React/Nest/GraphQL); no Java
+p10,jd-15,09012be5-7e8a-4cd9-9a33-6c857a7c8439,0,en,en,ai-agent,false,marketing manager
+p11,jd-09,94602483-ac0f-4400-87bb-097ab7c4ca92,2,en,en,ai-agent,false,"data engineer, dbt/Airflow/PySpark; no cloud DW or Kafka evidence"
+p12,jd-09,83b438c9-26ac-483f-90c3-aae43c106c87,1,en,en,ai-agent,false,data analyst with small ETL/warehouse projects
+p13,jd-09,8f72b63c-d956-4477-b6f1-d933512363ba,1,en,vi,ai-agent,false,"AI/ML researcher; same broad data field, no data engineering tools"
+p14,jd-09,00952444-adfa-4422-8253-3121a4ac2e9f,0,en,en,ai-agent,false,business analyst / QC
+p15,jd-09,09012be5-7e8a-4cd9-9a33-6c857a7c8439,0,en,en,ai-agent,false,marketing manager
+p16,jd-14,48dce0f0-15aa-47a5-876f-614dae9f654e,2,en,en,ai-agent,false,"senior DevOps; CI/CD, K8s, Jenkins"
+p17,jd-14,22682267-27d5-4139-981f-85085d93b177,1,en,vi,ai-agent,false,Unix sysadmin with basic DevOps knowledge
+p18,jd-14,0c7e52be-5fc1-42ae-a380-f5d50d9ff4f8,1,en,en,ai-agent,false,network/system admin with Azure DevOps
+p19,jd-14,56ed1a6f-1cd3-44b8-a8fd-dea1459fa348,1,en,en,ai-agent,false,"network/system admin; same broad IT-infra field, no DevOps tools"
+p20,jd-14,54a5f1bb-0fc1-4412-942e-1e2bb8c7a685,0,en,en,ai-agent,false,UI/UX designer
+p21,jd-06,1373126b-3983-4887-8331-2497e8603635,2,vi,vi,ai-agent,false,"tester with Selenium/Appium/JMeter, ISTQB"
+p22,jd-06,8d31190e-d308-40bd-a733-6a85a2fc0461,2,vi,vi,ai-agent,false,"QC/QA engineer, Selenium basics"
+p23,jd-06,6f7c71ce-aeec-403d-92e0-2b995ba77041,2,vi,en,ai-agent,false,test lead
+p24,jd-06,1ec242c7-3fa2-4886-9e1d-886cf0f26dc5,0,vi,vi,ai-agent,false,generic programmer
+p25,jd-06,7d9feaf3-0294-411b-82d0-e5491311d942,0,vi,vi,ai-agent,false,sales head
+p26,jd-41,4237bce0-2c0b-4af2-adfc-f234430fffaa,2,vi,en,ai-agent,false,"AI engineer, OCR/MLOps at a bank"
+p27,jd-41,aa434542-194d-4687-804a-7655c9af4a01,1,vi,en,ai-agent,false,AI research (MSc); no serving/MLOps/docker; boundary case with 2
+p28,jd-41,1b202ad7-ee8b-460d-b364-0dcb39e4702c,2,vi,vi,ai-agent,false,AI engineer NLP/speech/CV; boundary case
+p29,jd-41,8f72b63c-d956-4477-b6f1-d933512363ba,1,vi,vi,ai-agent,false,AI/ML/image-processing researcher; sparse CV
+p30,jd-41,7d9feaf3-0294-411b-82d0-e5491311d942,0,vi,vi,ai-agent,false,sales head
+p31,jd-26,83f3e415-c825-4a6e-ab49-c44d2b76b299,2,vi,en,ai-agent,false,sales manager for IT infrastructure/digital transformation
+p32,jd-26,443f699c-47e7-45ac-aca3-415f24b69a00,2,vi,vi,ai-agent,false,sales head selling IP cameras / access control
+p33,jd-26,75167113-30d3-4815-a84a-10aa8e11f4c9,1,vi,en,ai-agent,false,"business development in fintech/e-commerce, not ICT"
+p34,jd-26,7d9feaf3-0294-411b-82d0-e5491311d942,1,vi,vi,ai-agent,false,admissions sales head; earlier software/marketing solution sales
+p35,jd-26,0232b2ff-65a9-4f49-b682-4c06e84efed6,0,vi,vi,ai-agent,false,.NET programmer
+p36,jd-63,00ff79ef-cd70-4b57-adcf-1f6e778b21c5,2,vi,en,ai-agent,false,business analyst with matching duties
+p37,jd-63,00952444-adfa-4422-8253-3121a4ac2e9f,2,vi,en,ai-agent,false,QC lead moved to BA duties
+p38,jd-63,a1abde70-6e08-4ac2-b746-bc1425040e56,1,vi,en,ai-agent,false,product manager
+p39,jd-63,1348eacb-7526-40eb-adf8-0e9f92c3b7ab,0,vi,en,ai-agent,false,project manager / developer
+p40,jd-63,1ec242c7-3fa2-4886-9e1d-886cf0f26dc5,0,vi,vi,ai-agent,false,programmer

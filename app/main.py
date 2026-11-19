@@ -24,8 +24,25 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description=("API for CV evaluation, Semantic Matching & Knowledge Graph."),
+        description=(
+            "API for CV evaluation, Semantic Matching & Knowledge Graph.\n\n"
+            "**Authentication**: obtain a JWT from `POST /api/v1/auth/login` "
+            "(form fields `username`, `password`) and send it as "
+            "`Authorization: Bearer <access_token>`. Use **Authorize** in Swagger UI.\n\n"
+            "**Response envelope**: most endpoints return `ResponseSchema` "
+            "`{success, message, data, meta}`."
+        ),
         version="1.0.0",
+        openapi_tags=[
+            {"name": "Auth", "description": "Registration, login, token refresh and password reset."},
+            {"name": "Users", "description": "Current user's profile and password."},
+            {"name": "Profiles", "description": "Upload, list and edit candidate CVs."},
+            {"name": "Jobs", "description": "Job Descriptions (JD) available for matching."},
+            {"name": "Knowledge Graph", "description": "Neo4j sync, graph reads, hybrid candidate search and graph-based matching (mostly Admin)."},
+            {"name": "Semantic Search", "description": "Vector search over skills and job requirements (pgvector)."},
+            {"name": "Skill Matching", "description": "CV vs JD suitability evaluation using embeddings and the skill graph."},
+            {"name": "Skill Gap Analysis", "description": "Compare candidate skills with job requirements."},
+        ],
         lifespan=lifespan,
     )
     app.include_router(router=api_router, prefix="/api/v1")

@@ -18,19 +18,19 @@ class SkillGapAnalysisRequest(BaseModel):
     1. Truyền profile_id và jd_id đã lưu trong cơ sở dữ liệu.
     2. HOẶC truyền trực tiếp danh sách kỹ năng tự do (để test nhanh / simulate).
     """
-    profile_id: Optional[int] = Field(None, description="ID của hồ sơ ứng viên trong DB", example=1)
-    jd_id: Optional[int] = Field(None, description="ID của tin tuyển dụng JD trong DB", example=1)
+    profile_id: Optional[int] = Field(None, description="ID của hồ sơ ứng viên trong DB", examples=[1])
+    jd_id: Optional[int] = Field(None, description="ID của tin tuyển dụng JD trong DB", examples=[1])
     
     # Dành cho chế độ phân tích ad-hoc (không bắt buộc có trong DB)
     candidate_skills: Optional[List[str]] = Field(
         None, 
         description="Danh sách kỹ năng ứng viên (dùng khi không có profile_id)",
-        example=["Python", "FastAPI", "MySQL", "Git"]
+        examples=[["Python", "FastAPI", "MySQL", "Git"]]
     )
     required_skills: Optional[List[str]] = Field(
         None, 
         description="Danh sách kỹ năng yêu cầu của JD (dùng khi không có jd_id)",
-        example=["Python", "PostgreSQL", "Docker", "AWS"]
+        examples=[["Python", "PostgreSQL", "Docker", "AWS"]]
     )
     
     # Tham số tùy chỉnh ngưỡng (tùy chọn)

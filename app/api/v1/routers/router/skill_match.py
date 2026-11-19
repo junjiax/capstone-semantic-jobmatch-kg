@@ -56,7 +56,7 @@ class MatchEvaluationResponse(BaseModel):
     )
 
 
-@router.get("/")
+@router.get("/", summary="Kiểm tra trạng thái Skill Matching API")
 def health_check():
     return {"status": "activate", "message": "API is running successfully."}
 

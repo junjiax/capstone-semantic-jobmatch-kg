@@ -102,8 +102,8 @@ def analyze_skill_gap_endpoint(
     tags=["Skill Gap Analysis"],
 )
 def analyze_skill_gap_by_ids(
-    profile_id: int = Path(..., description="ID của hồ sơ ứng viên", example=1),
-    jd_id: int = Path(..., description="ID của tin tuyển dụng", example=1),
+    profile_id: int = Path(..., description="ID của hồ sơ ứng viên", examples=[1]),
+    jd_id: int = Path(..., description="ID của tin tuyển dụng", examples=[1]),
     db: Session = Depends(get_db),
 ):
     """

@@ -58,3 +58,15 @@ def test_docs_pages_render(client, path):
 
 def test_unknown_route_404(client):
     assert client.get("/api/v1/does-not-exist").status_code == 404
+
+
+def test_exported_openapi_json_matches_app(schema):
+    """docs/openapi.json phải khớp app.openapi(); chạy `python -m scripts.export_openapi` nếu lệch."""
+    import json
+    from pathlib import Path
+
+    exported = json.loads((Path(__file__).resolve().parents[2] / "docs" / "openapi.json").read_text(encoding="utf-8"))
+    assert set(exported["paths"]) == set(schema["paths"])
+    for path, item in schema["paths"].items():
+        assert set(exported["paths"][path]) == set(item), path
+    assert exported == json.loads(json.dumps(schema))

@@ -8,7 +8,12 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.get("/available")
+@router.get(
+    "/available",
+    summary="Danh sách JD khả dụng",
+    description="Trả về các Job Description, mới nhất trước.",
+    responses={401: {"description": "Chưa đăng nhập hoặc token không hợp lệ."}},
+)
 def list_available_jobs(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_active_user),

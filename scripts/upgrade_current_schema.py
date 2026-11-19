@@ -18,7 +18,7 @@ def main():
     with engine.begin() as conn:
         Base.metadata.create_all(conn)
         tables = set(inspect(conn).get_table_names())
-        if 'USER' not in tables:
+        if 'users' not in tables:  # bảng legacy; 'USER' luôn tồn tại sau create_all
             print("Current schema ready; no legacy tables found.")
             return
         queries = [

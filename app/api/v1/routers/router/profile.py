@@ -72,7 +72,12 @@ def _profile_list_item(profile: Profile) -> dict:
     }
 
 
-@router.get("/mine")
+@router.get(
+    "/mine",
+    summary="Danh sách CV của tôi",
+    description="Trả về các CV do người dùng hiện tại tải lên, mới nhất trước.",
+    responses={401: {"description": "Chưa đăng nhập hoặc token không hợp lệ."}},
+)
 def list_my_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -86,7 +91,12 @@ def list_my_profiles(
     return {"success": True, "data": [_profile_list_item(profile) for profile in profiles]}
 
 
-@router.get("/available")
+@router.get(
+    "/available",
+    summary="Danh sách CV khả dụng",
+    description="Ứng viên chỉ thấy CV của mình; Admin thấy toàn bộ CV.",
+    responses={401: {"description": "Chưa đăng nhập hoặc token không hợp lệ."}},
+)
 def list_available_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -103,7 +113,17 @@ def list_available_profiles(
     return {"success": True, "data": [_profile_list_item(profile) for profile in profiles]}
 
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Tải lên CV",
+    description="Tải CV (pdf, docx, txt), trích xuất văn bản, liên hệ và kỹ năng rồi lưu vào PostgreSQL.",
+    responses={
+        400: {"description": "Định dạng tệp không được hỗ trợ."},
+        401: {"description": "Chưa đăng nhập hoặc token không hợp lệ."},
+        422: {"description": "Không trích xuất được văn bản hoặc dữ liệu không hợp lệ."},
+    },
+)
 async def upload_profile(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -168,7 +188,15 @@ async def upload_profile(
         raise HTTPException(status_code=422, detail=f"Không thể xử lý CV: {exc}") from exc
 
 
-@router.patch("/{profile_id}")
+@router.patch(
+    "/{profile_id}",
+    summary="Cập nhật tiêu đề và kỹ năng của CV",
+    description="Chỉ chủ sở hữu CV được cập nhật; sau khi lưu CV được đồng bộ sang Neo4j nếu khả dụng.",
+    responses={
+        401: {"description": "Chưa đăng nhập hoặc token không hợp lệ."},
+        404: {"description": "CV không tồn tại hoặc không thuộc người dùng."},
+    },
+)
 def update_profile_review(
     profile_id: int,
     payload: ProfileUpdateRequest,

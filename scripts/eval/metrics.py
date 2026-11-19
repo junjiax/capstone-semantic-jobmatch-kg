@@ -228,6 +228,20 @@ def bootstrap_ci(
     return bootstrap_stat(values, mean, seed, n_resamples, alpha)
 
 
+def summarize_timings(values: Sequence[float]) -> Dict[str, float]:
+    """n, mean, p50, p95 (nearest rank), min, max of a list of timings."""
+    if not values:
+        raise ValueError("values must not be empty")
+    return {
+        "n": len(values),
+        "mean": sum(values) / len(values),
+        "p50": percentile(values, 50),
+        "p95": percentile(values, 95),
+        "min": min(values),
+        "max": max(values),
+    }
+
+
 def percentile(values: Sequence[float], p: float) -> float:
     """Nearest-rank percentile, 0 < p <= 100 (p = 0 returns the minimum)."""
     if not values:

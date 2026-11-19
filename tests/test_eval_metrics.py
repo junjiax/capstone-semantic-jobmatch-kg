@@ -237,3 +237,21 @@ def test_percentile_errors():
         m.percentile([], 50)
     with pytest.raises(ValueError):
         m.percentile([1], 101)
+
+
+# ---------- timing summary ----------
+def test_summarize_timings_hand_computed():
+    # values 10..100 step 10 (n=10), shuffled: mean=55; p50 -> ceil(5.0)=5th=50; p95 -> ceil(9.5)=10th=100
+    s = m.summarize_timings([70, 10, 100, 30, 20, 90, 40, 60, 50, 80])
+    assert s["n"] == 10
+    assert s["mean"] == 55
+    assert s["p50"] == 50
+    assert s["p95"] == 100
+    assert s["min"] == 10 and s["max"] == 100
+
+
+def test_summarize_timings_single_and_empty():
+    s = m.summarize_timings([2.5])
+    assert (s["mean"], s["p50"], s["p95"], s["min"], s["max"]) == (2.5, 2.5, 2.5, 2.5, 2.5)
+    with pytest.raises(ValueError):
+        m.summarize_timings([])
